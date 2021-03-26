@@ -88,12 +88,12 @@ CREATE TABLE Instructors(
 
 
 CREATE TABLE Courses(
-csc_id INTEGER PRIMARY KEY,
-ctitle TEXT,
-description TEXT,
-name TEXT NOT NULL,
-hours INTEGER,
-FOREIGN KEY (name) REFERENCES Course_Areas(name) 
+	csc_id INTEGER PRIMARY KEY,
+	ctitle TEXT UNIQUE,
+	description TEXT,
+	name TEXT NOT NULL,
+	hours INTEGER,
+	FOREIGN KEY (name) REFERENCES Course_Areas(name) 
 );
 
 CREATE TABLE Course_Offerings(
@@ -110,19 +110,35 @@ CREATE TABLE Course_Offerings(
 	PRIMARY KEY(csc_id, launch_date),
 	FOREIGN KEY(csc_id) REFERENCES courses(csc_id) ON DELETE CASCADE,
 	FOREIGN KEY(eid) REFERENCES Administrators(eid)
+	CHECK (
+		(select CAST(registration_deadline AS DATE) - CAST(start_date AS DATE)) >= 10
+	)
 );
 
 CREATE TABLE Sessions(
-	sid INTEGER,
-	end_date DATE,
+	sid SERIAL,
+	end_time TIMESTAMP,
 	date DATE,
-	start_date DATE,
+	start_time TIMESTAMP,
 	csc_id INTEGER,
 	launch_date DATE,
 	eid INTEGER NOT NULL,
 	PRIMARY KEY(sid, csc_id, launch_date),
 	FOREIGN KEY(csc_id, launch_date) REFERENCES Course_Offerings(csc_id, launch_date) ON DELETE CASCADE,
-	FOREIGN KEY(eid) REFERENCES Instructors(eid)
+	FOREIGN KEY(eid) REFERENCES Instructors(eid),
+	CHECK (
+		select EXTRACT(isodow FROM date) in (1,2,3,4,5)
+	),
+	CHECK (
+		((select EXTRACT(hours FROM start_time) in (9,10,11)) and
+		(select EXTRACT(hours FROM end_time) in (10,11,12))) 
+		or
+		((select EXTRACT(hours FROM start_time) in (14,15,16,17)) and
+		(select EXTRACT(hours FROM end_time) in (15,16,17,18)))
+	)
+	CHECK (
+		(select EXTRACT(hours FROM end_time)) > (select EXTRACT(hours FROM start_time))
+	)
 );
 	
 

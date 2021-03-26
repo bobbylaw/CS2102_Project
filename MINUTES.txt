@@ -1,0 +1,25 @@
+Sessions conducted in specific weekday (Monday to Friday) at a specific hour. Earliest time 9am, latest end by 6pm. No sessions between 12pm to 2pm 
+	- Use CHECK constraint
+
+No two sessions for the same course offering can be conducted on the same day and at the same time.
+	- USE TRIGGER
+
+The registration deadline for a course offering must be at least 10 days before its start date.
+	- USE CHECK CONSTRAINT
+
+When adding new session, the session date must be within the course offering start and end date
+	- USE TRIGGER
+
+For each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
+	- USE TRIGGER
+
+The seating capacity of a course session is equal to the seating capacity of the room where the session is conducted, and the seating capacity of a course offering is equal to the sum of the seating capacities of its sessions. 
+	- USE TRIGGER
+
+When adding new Session, we need to update the Course offering total capacity
+	- USE TRIGGER
+
+A course offering is said to be available if the number of registrations received is no more than its seating capacity; otherwise, we say that a course offering is fully booked.
+	- USE TRIGGER
+
+ended at paragraph 3
