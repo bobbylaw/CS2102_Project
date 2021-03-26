@@ -7,8 +7,8 @@ CREATE TABLE Employees(
 	home_address TEXT,
 	contact_number TEXT,
 	email TEXT,
-	join_date TIMESTAMP,
-	depart_date TIMESTAMP
+	join_date DATE,
+	depart_date DATE
 );
 
 CREATE TABLE Rooms (
@@ -30,7 +30,7 @@ CREATE TABLE Customers(
 CREATE TABLE Packages (
 	pid INTEGER PRIMARY KEY,
 	pname  TEXT,
-	num_session INTEGER,
+	num_of_free_session INTEGER,
 	price   INTEGER,
 	start_date DATE,
 	end_date DATE
@@ -100,7 +100,7 @@ CREATE TABLE Course_Offerings(
 	launch_date DATE,
 	target_num_of_reg INTEGER,
 	registration_deadline DATE,
-	status TEXT,
+	is_available TINYINT(1) DEFAULT 1,
 	fees numeric(12,2),
 	end_date DATE,
 	start_date DATE,
@@ -109,35 +109,37 @@ CREATE TABLE Course_Offerings(
 	eid INTEGER NOT NULL,  
 	PRIMARY KEY(csc_id, launch_date),
 	FOREIGN KEY(csc_id) REFERENCES courses(csc_id) ON DELETE CASCADE,
-	FOREIGN KEY(eid) REFERENCES Administrators(eid)
+	FOREIGN KEY(eid) REFERENCES Administrators(eid),
 	CHECK (
-		(select CAST(registration_deadline AS DATE) - CAST(start_date AS DATE)) >= 10
+		(CAST(registration_deadline AS DATE) - CAST(start_date AS DATE)) >= 10
 	)
 );
 
 CREATE TABLE Sessions(
 	sid SERIAL,
-	end_time TIMESTAMP,
+	end_time TIME,
 	date DATE,
-	start_time TIMESTAMP,
+	start_time TIME,
 	csc_id INTEGER,
 	launch_date DATE,
+	rid INTEGER NOT NULL,
 	eid INTEGER NOT NULL,
 	PRIMARY KEY(sid, csc_id, launch_date),
 	FOREIGN KEY(csc_id, launch_date) REFERENCES Course_Offerings(csc_id, launch_date) ON DELETE CASCADE,
 	FOREIGN KEY(eid) REFERENCES Instructors(eid),
-	CHECK (
-		select EXTRACT(isodow FROM date) in (1,2,3,4,5)
+	FOREIGN KEY(rid) REFERENCES Rooms(rid),
+	CONSTRAINT test1 CHECK (
+		(EXTRACT(isodow FROM date) in (1,2,3,4,5))
 	),
-	CHECK (
-		((select EXTRACT(hours FROM start_time) in (9,10,11)) and
-		(select EXTRACT(hours FROM end_time) in (10,11,12))) 
+	CONSTRAINT test2 CHECK (
+		((EXTRACT(hours FROM start_time) >= 9) and
+		(EXTRACT(hours FROM end_time) <= 12)) 
 		or
-		((select EXTRACT(hours FROM start_time) in (14,15,16,17)) and
-		(select EXTRACT(hours FROM end_time) in (15,16,17,18)))
-	)
-	CHECK (
-		(select EXTRACT(hours FROM end_time)) > (select EXTRACT(hours FROM start_time))
+		((EXTRACT(hours FROM start_time) >= 14) and
+		(EXTRACT(hours FROM end_time) <= 18))
+	),
+	CONSTRAINT test3 CHECK (
+		(EXTRACT(hours FROM end_time)) > (EXTRACT(hours FROM start_time))
 	)
 );
 	
@@ -192,6 +194,7 @@ CREATE TABLE Cancels (
 	cancel_date DATE,
 	launch_date DATE,
 	csc_id INTEGER,
+	refund_amount NUMERIC(12,2),
 	PRIMARY KEY (cust_id, sid, cancel_date, launch_date, csc_id),
 	FOREIGN KEY (cust_id) REFERENCES Customers(cust_id),
 	FOREIGN KEY (sid, launch_date, csc_id) REFERENCES Sessions(sid, launch_date,csc_id)
