@@ -78,14 +78,14 @@ CREATE TABLE Course_Areas(
 
 /* course_name refers to instructor’s specialization area */
 CREATE TABLE Instructors(
-	eid INTEGER PRIMARY KEY,
+	eid SERIAL PRIMARY KEY,
+	eid_FT INTEGER UNIQUE,
+	eid_PT INTEGER UNIQUE,
 	course_name TEXT NOT NULL,
-	FOREIGN KEY(eid) REFERENCES Full_Time_Employees(eid) ON DELETE CASCADE,
-	FOREIGN KEY(eid) REFERENCES Part_Time_Employees(eid) ON DELETE CASCADE,
+	FOREIGN KEY(eid_FT) REFERENCES Full_Time_Employees(eid) ON DELETE CASCADE,
+	FOREIGN KEY(eid_PT) REFERENCES Part_Time_Employees(eid) ON DELETE CASCADE,
 	FOREIGN KEY(course_name) REFERENCES Course_Areas(name)
 );
-
-
 
 CREATE TABLE Courses(
 	csc_id INTEGER PRIMARY KEY,
