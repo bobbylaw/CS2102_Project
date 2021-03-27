@@ -146,9 +146,9 @@ CREATE TABLE Sessions(
 	
 
 CREATE TABLE Owns_Credit_Cards (
-	cust_id SERIAL NOT NULL,
 	card_number TEXT PRIMARY KEY,
-	exipiry_date DATE,
+	cust_id INTEGER NOT NULL,
+	expiry_date DATE,
 	cvv_code NUMERIC(3),
 	from_date DATE,
 	FOREIGN KEY (cust_id) REFERENCES Customers
