@@ -84,7 +84,8 @@ CREATE TABLE Instructors(
 	course_name TEXT NOT NULL,
 	FOREIGN KEY(eid_FT) REFERENCES Full_Time_Employees(eid) ON DELETE CASCADE,
 	FOREIGN KEY(eid_PT) REFERENCES Part_Time_Employees(eid) ON DELETE CASCADE,
-	FOREIGN KEY(course_name) REFERENCES Course_Areas(name)
+	FOREIGN KEY(course_name) REFERENCES Course_Areas(name),
+	CHECK(eid_FT IS NOT NULL OR eid_PT IS NOT NULL)
 );
 
 CREATE TABLE Courses(
@@ -117,9 +118,9 @@ CREATE TABLE Course_Offerings(
 
 CREATE TABLE Sessions(
 	sid SERIAL,
+	start_time TIME,
 	end_time TIME,
 	date DATE,
-	start_time TIME,
 	csc_id INTEGER,
 	launch_date DATE,
 	rid INTEGER NOT NULL,
@@ -145,9 +146,9 @@ CREATE TABLE Sessions(
 	
 
 CREATE TABLE Owns_Credit_Cards (
-	cust_id SERIAL NOT NULL,
 	card_number TEXT PRIMARY KEY,
-	exipiry_date DATE,
+	cust_id INTEGER NOT NULL,
+	expiry_date DATE,
 	cvv_code NUMERIC(3),
 	from_date DATE,
 	FOREIGN KEY (cust_id) REFERENCES Customers
