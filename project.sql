@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS Employees, Rooms, Customers, Packages, Salary, Full_Time_Em
 Courses, Course_Offerings, Sessions, Owns_Credit_Cards, Purchases, Registers, Redeems, Cancels CASCADE;
 
 CREATE TABLE Employees(
-	eid INTEGER PRIMARY KEY,
+	eid SERIAL PRIMARY KEY,
 	name TEXT,
 	home_address TEXT,
 	contact_number TEXT,
@@ -129,17 +129,17 @@ CREATE TABLE Sessions(
 	FOREIGN KEY(csc_id, launch_date) REFERENCES Course_Offerings(csc_id, launch_date) ON DELETE CASCADE,
 	FOREIGN KEY(eid) REFERENCES Instructors(eid),
 	FOREIGN KEY(rid) REFERENCES Rooms(rid),
-	CONSTRAINT test1 CHECK (
+	CONSTRAINT check_date_of_the_week CHECK (
 		(EXTRACT(isodow FROM date) in (1,2,3,4,5))
 	),
-	CONSTRAINT test2 CHECK (
+	CONSTRAINT check_time_between_9am_12pm_and_2pm_6pm CHECK (
 		((EXTRACT(hours FROM start_time) >= 9) and
 		(EXTRACT(hours FROM end_time) <= 12)) 
 		or
 		((EXTRACT(hours FROM start_time) >= 14) and
 		(EXTRACT(hours FROM end_time) <= 18))
 	),
-	CONSTRAINT test3 CHECK (
+	CONSTRAINT check_start_time_earlier_than_end_time CHECK (
 		(EXTRACT(hours FROM end_time)) > (EXTRACT(hours FROM start_time))
 	)
 );
