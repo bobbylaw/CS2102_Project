@@ -100,7 +100,7 @@ CREATE TABLE Course_Offerings(
 	launch_date DATE,
 	target_num_of_reg INTEGER,
 	registration_deadline DATE,
-	is_available TINYINT(1) DEFAULT 1,
+	is_available BOOLEAN,
 	fees numeric(12,2),
 	end_date DATE,
 	start_date DATE,
