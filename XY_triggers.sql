@@ -35,7 +35,7 @@ RETURNS TRIGGER AS $$
 DECLARE
     counter INTEGER;
     cid text;
-    credit_cards records;
+    credit_cards record;
 BEGIN
     cid := (
         SELECT DISTINCT cust_id
@@ -52,7 +52,7 @@ BEGIN
     counter := (
         SELECT COALESCE(COUNT(*), 0)
         FROM Registers as r NATURAL JOIN Sessions as s NATURAL JOIN Course_Offerings as co
-        WHERE card_number IN credit_cards
+        WHERE card_number IN (SELECT * FROM credit_cards)
             AND NEW.date < registration_deadline
     );
 
@@ -65,6 +65,6 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER EACH_COURSE_AT_MOST_ONE_REGISTER_BEFORE_REG_DEADLINE_PER_CUSTOMER_TRIGGER
+CREATE TRIGGER EACH_CSE_AT_MOST_ONCE_BEFORE_REG_DEADLINE_PER_CUSTOMER_TRIGGER
 BEFORE INSERT OR UPDATE ON Registers
 FOR EACH ROW EXECUTE FUNCTION EACH_COURSE_AT_MOST_ONE_REGISTER_BEFORE_REG_DEADLINE_PER_CUSTOMER();
