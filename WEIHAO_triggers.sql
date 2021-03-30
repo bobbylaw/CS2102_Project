@@ -96,7 +96,7 @@ CREATE OR REPLACE FUNCTION max_consec_course_session_func()
 RETURNS TRIGGER AS
 $$
 DECLARE
-    curs CURSOR FOR (SELECT * FROM Session WHERE Session.eid = NEW.eid);
+    curs CURSOR FOR (SELECT * FROM Session WHERE Session.eid = NEW.eid and NEW.eid IN (SELECT eid FROM Part_time_instructors));
     r RECORD;
     total_work_hours INTERVAL;
 BEGIN
