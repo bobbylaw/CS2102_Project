@@ -2,6 +2,13 @@ DROP TABLE IF EXISTS Employees, Pay_slips, Part_time_Emp, Full_time_Emp, Instruc
 Full_time_instructors, Course_areas, Courses, Offerings, Rooms , Sessions, Customers, Cancels, Owns_credit_cards, 
 Registers, Course_packages, Buys, Redeems CASCADE;
 
+DROP TYPE salary_information CASCADE;
+
+CREATE TYPE salary_information AS (
+	salary INTEGER,
+	rate TEXT
+)
+
 -- BLUE INK FIRST
 CREATE TABLE Employees (
     eid SERIAL PRIMARY KEY,
@@ -25,12 +32,13 @@ CREATE TABLE Pay_slips (
 
 CREATE TABLE Part_time_Emp (
     eid INTEGER PRIMARY KEY REFERENCES Employees ON DELETE CASCADE, -- IS-A Relationship
-    hourly_rate INTEGER
+    hourly_rate salary_information
 );
 
 CREATE TABLE Full_time_Emp(
     eid INTEGER PRIMARY KEY REFERENCES Employees ON DELETE CASCADE, -- IS-A Relationship
-    monthly_salary INTEGER
+    monthly_salary salary_information
+);
 
 CREATE TABLE Administrators (
     eid INTEGER PRIMARY KEY REFERENCES Full_time_Emp ON DELETE CASCADE -- IS-A Relationship
