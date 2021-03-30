@@ -82,9 +82,9 @@ DECLARE
 BEGIN
     total_capacity := (SELECT SUM(seating_capacity)
                         FROM Sessions as s NATURAL JOIN Rooms as r
-                        WHERE NEW.course_id = s.course_id AND
-                            NEW.launch_date = s.launch_date AND
-                            NEW.sid = s.sid);
+                        WHERE OLD.course_id = s.course_id AND
+                            OLD.launch_date = s.launch_date AND
+                            OLD.sid = s.sid);
 
     UPDATE Offerings SET seating_capacity = total_capacity;
 
@@ -97,3 +97,33 @@ FOR EACH ROW EXECUTE FUNCTION SEATING_CAPACITY_COURSE_EQUAL_SUM_OF_SESSIONS();
 
 /* ============================================================================================================ */
 
+CREATE OR REPLACE FUNCTION CSE_OFFERING_AVAIL()
+RETURNS TRIGGER AS $$
+DECLARE
+    avail_capacity INTEGER;
+    before_add_capacity INTEGER;
+BEGIN
+    avail_capacity := (SELECT o.seating_capacity
+                        FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN Offerings as o
+                        WHERE NEW.course_id = course_id AND 
+                            NEW.launch_date = launch_date AND
+                            NEW.sid = sid);
+
+    before_add_capacity := (SELECT COUNT(*)
+                            FROM Registers
+                            WHERE NEW.course_id = course_id AND 
+                            NEW.launch_date = launch_date AND
+                            NEW.sid = sid);
+    
+    IF (avail_capacity - before_add_capacity <= 0) THEN
+        RAISE EXCEPTION 'Course offering is fully booked!';
+        RETURN NULL;
+    ELSE
+        RETURN NEW;
+    END IF;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER CSE_OFFERING_AVAIL_TRIGGER
+BEFORE INSERT OR UPDATE ON Registers
+FOR EACH ROW EXECUTE FUNCTION CSE_OFFERING_AVAIL();
