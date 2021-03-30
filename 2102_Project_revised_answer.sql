@@ -151,7 +151,7 @@ CREATE TABLE Cancels (
 );
 
 CREATE TABLE Owns_credit_cards (
-    number TEXT PRIMARY KEY,
+    credit_card_number TEXT PRIMARY KEY,
     cust_id INTEGER NOT NULL, -- KEY AND TOTAL PARTICIPATION to customers
     CVV INTEGER,
     from_date DATE,
@@ -161,13 +161,13 @@ CREATE TABLE Owns_credit_cards (
 
 
 CREATE TABLE Registers (
-    number TEXT, -- Registers connect to Owns_credit_cards
+    credit_card_number TEXT, -- Registers connect to Owns_credit_cards
     course_id INTEGER, -- Registers connect to Sessions
     launch_date DATE, -- Registers connect to Sessions
     sid INTEGER, -- Registers connect to Sessions
     registration_date DATE, -- date is a reserved keyword hence i change to registration_date
-    PRIMARY KEY (number, course_id, launch_date, sid, registration_date), -- Date is a component of primary key
-    FOREIGN KEY (number) REFERENCES Owns_credit_cards (number),
+    PRIMARY KEY (credit_card_number, course_id, launch_date, sid, registration_date), -- Date is a component of primary key
+    FOREIGN KEY (credit_card_number) REFERENCES Owns_credit_cards (credit_card_number),
     FOREIGN KEY (course_id, launch_date, sid) REFERENCES Sessions (course_id, launch_date, sid)
 );
 
@@ -181,25 +181,25 @@ CREATE TABLE Course_packages (
 );
 
 CREATE TABLE Buys (
-    number TEXT, -- Buys connects to Owns_credit_cards
+    credit_card_number TEXT, -- Buys connects to Owns_credit_cards
     package_id INTEGER, -- Buys connect to course_packages
     purchase_date DATE, -- Date is a reserved keyword hence i change to purchase_date
     num_of_redemption INTEGER,
-    PRIMARY KEY(number, package_id, purchase_date),
-    FOREIGN KEY (number) REFERENCES Owns_credit_cards(number), -- Buys connects to Owns_credit_cards
+    PRIMARY KEY(credit_card_number, package_id, purchase_date),
+    FOREIGN KEY (credit_card_number) REFERENCES Owns_credit_cards(credit_card_number), -- Buys connects to Owns_credit_cards
     FOREIGN KEY (package_id) REFERENCES Course_packages(package_id), -- Buys connect to course_packages
     CHECK (num_of_redemption >= 0) -- can't possibly let redemption goes negative
 );
 
 CREATE TABLE Redeems (
-    number TEXT, -- Redeems is an aggregation to buys
+    credit_card_number TEXT, -- Redeems is an aggregation to buys
     package_id INTEGER, -- Redeems is an aggregation to buy
     purchase_date DATE, -- Redeems is an aggregation to buy
     course_id INTEGER, -- Redeems connect to Sessions
     launch_date DATE, -- Redeems connect to Sessions
     sid INTEGER, -- Redeems connect to Sessions
     redemption_date DATE, -- Date is a reserved keyword hence i change to redemption_date
-    PRIMARY KEY (number, package_id, purchase_date, course_id, launch_date, sid, redemption_date),
-    FOREIGN KEY (number, package_id, purchase_date) REFERENCES Buys (number, package_id, purchase_date), -- Redeems is an aggregation to buy
+    PRIMARY KEY (credit_card_number, package_id, purchase_date, course_id, launch_date, sid, redemption_date),
+    FOREIGN KEY (credit_card_number, package_id, purchase_date) REFERENCES Buys (credit_card_number, package_id, purchase_date), -- Redeems is an aggregation to buy
     FOREIGN KEY (course_id, launch_date, sid) REFERENCES Sessions (course_id, launch_date, sid) -- Redeems connect to Sessions
 );
