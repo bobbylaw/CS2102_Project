@@ -63,15 +63,17 @@ CREATE OR REPLACE FUNCTION check_consec_course_session_func()
 RETURNS TRIGGER AS
 $$
 DECLARE
-    curs CURSOR FOR (SELECT * FROM Session WHERE Session.session_date = NEW.session_date);
+    curs CURSOR FOR (SELECT * FROM Session WHERE Session.session_date = NEW.session_date AND Session.eid = NEW.eid);
     r RECORD;
 BEGIN
     OPEN curs;
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
-        IF (AGE(NEW.start_time, r.start_time) > INTERVAL '0 hour') AND
-            (AGE(NEW.start_time, r.end_time) < INTERVAL '1 hour') THEN
+        IF ((AGE(NEW.start_time, r.start_time) => INTERVAL '0 hour') AND
+            (AGE(NEW.start_time, r.end_time) < INTERVAL '1 hour')) OR
+            ((AGE(NEW.end_time, r.start_time) <= INTERVAL '0 hour') AND
+            (AGE(r.start_time, NEW.end_time) < INTERVAL '1 hour')) THEN
             CLOSE curs;
             RETURN NULL;
         END IF;
