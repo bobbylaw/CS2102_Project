@@ -8,7 +8,7 @@ BEGIN
     counter := (
         SELECT COALESCE(COUNT(*), 0)
             FROM Sessions
-            WHERE (csc_id = NEW.csc_id AND launch_date = NEW.launch_date AND date = NEW.date) AND
+            WHERE (course_id = NEW.course_id AND launch_date = NEW.launch_date AND session_date = NEW.session_date) AND
                 ((NEW.start_time < start_time AND NEW.start_time < end_time AND NEW.end_time > start_time AND NEW.end_time <= end_time) OR
                 (NEW.start_time >= start_time AND NEW.start_time < end_time AND NEW.end_time > start_time AND NEW.end_time > end_time) OR
                 (NEW.start_time >= start_time AND NEW.start_time <= end_time AND NEW.end_time >= start_time AND NEW.end_time <= end_time) OR
