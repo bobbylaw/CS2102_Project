@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS Employees, Pay_slips, Part_time_Emp, Full_time_Emp, Instructors, Managers, Administrators, Part_time_instructors, 
-Full_time_instructors, Course_areas, Courses, Offerings, Rooms , Sessions, Specializes, Customers, Cancels, Owns_credit_cards, 
+Full_time_instructors, Course_areas, Courses, Offerings, Rooms , Sessions, Customers, Cancels, Owns_credit_cards, 
 Registers, Course_packages, Buys, Redeems CASCADE;
 
 -- BLUE INK FIRST
@@ -31,7 +31,6 @@ CREATE TABLE Part_time_Emp (
 CREATE TABLE Full_time_Emp(
     eid INTEGER PRIMARY KEY REFERENCES Employees ON DELETE CASCADE, -- IS-A Relationship
     monthly_salary INTEGER
-);
 
 CREATE TABLE Administrators (
     eid INTEGER PRIMARY KEY REFERENCES Full_time_Emp ON DELETE CASCADE -- IS-A Relationship
@@ -65,7 +64,7 @@ CREATE TABLE Full_time_instructors (
     eid INTEGER,
 	course_area TEXT,
 	PRIMARY KEY (eid, course_area),
-	FOREIGN KEY (eid) REFERENCES Part_time_Emp(eid) ON DELETE CASCADE,
+	FOREIGN KEY (eid) REFERENCES Full_time_Emp(eid) ON DELETE CASCADE,
 	FOREIGN KEY (eid, course_area) REFERENCES Instructors(eid, course_area) -- 2 IS-A Relationship
 );
 
@@ -106,7 +105,7 @@ CREATE TABLE Rooms (
 CREATE TABLE Sessions (
     course_id INTEGER, -- weak entity set to offerings
     launch_date DATE, -- weak entity set to offerings
-	course_area TEXT, -- from Instructor
+	course_area TEXT, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
     rid INTEGER NOT NULL, -- Sessions is in conducts relationship with rooms. KEY AND TOTAL PARTICIPATION
     eid INTEGER NOT NULL, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
     sid SERIAL,
