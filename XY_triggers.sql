@@ -109,6 +109,7 @@ BEGIN
                             NEW.launch_date = launch_date AND
                             NEW.sid = sid);
 
+    /* this works because Sessions is a weak entity set to Offerings */
     before_add_capacity := (SELECT COUNT(*)
                             FROM Registers
                             WHERE NEW.course_id = course_id AND 
