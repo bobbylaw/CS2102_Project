@@ -42,7 +42,7 @@ BEGIN
     /* because card_number is tagged to one person */
     cid := (
         SELECT DISTINCT cust_id
-            FROM Registers as r NATURAL JOIN Owns_Credit_Cards NATURAL JOIN Customers as c
+            FROM (Registers NATURAL JOIN Owns_Credit_Cards) as rcc JOIN Customers as c ON rcc.cust_id = c.cust_id
             WHERE NEW.card_number = card_number
     );
 
