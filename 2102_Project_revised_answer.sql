@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS Employees, Pay_slips, Part_time_Emp, Full_time_Emp, Instructors, Managers, Administrators, Part_time_instructors, 
-Full_time_instructors, Course_areas, Courses, Offerings, Rooms , Sessions, Specializes, Customers, Cancels, Owns_credit_cards, 
+Full_time_instructors, Course_areas, Courses, Offerings, Rooms , Sessions, Customers, Cancels, Owns_credit_cards, 
 Registers, Course_packages, Buys, Redeems CASCADE;
 
 -- BLUE INK FIRST
@@ -31,35 +31,44 @@ CREATE TABLE Part_time_Emp (
 CREATE TABLE Full_time_Emp(
     eid INTEGER PRIMARY KEY REFERENCES Employees ON DELETE CASCADE, -- IS-A Relationship
     monthly_salary INTEGER
-);
 
-CREATE TABLE Instructors (
-    eid INTEGER PRIMARY KEY REFERENCES Employees ON DELETE CASCADE -- IS-A Relationship
+CREATE TABLE Administrators (
+    eid INTEGER PRIMARY KEY REFERENCES Full_time_Emp ON DELETE CASCADE -- IS-A Relationship
 );
 
 CREATE TABLE Managers (
     eid INTEGER PRIMARY KEY REFERENCES Full_time_Emp ON DELETE CASCADE-- IS-A Relationship
 );
 
-CREATE TABLE Administrators (
-    eid INTEGER PRIMARY KEY REFERENCES Full_time_Emp ON DELETE CASCADE -- IS-A Relationship
-);
-
-CREATE TABLE Part_time_instructors (
-    eid INTEGER PRIMARY KEY REFERENCES Part_time_Emp REFERENCES Instructors ON DELETE CASCADE -- 2 IS-A Relationship
-);
-
-CREATE TABLE Full_time_instructors (
-    eid INTEGER PRIMARY KEY REFERENCES Full_time_Emp REFERENCES Instructors ON DELETE CASCADE -- 2 IS-A Relationship
-);
-
--- RED INK
 CREATE TABLE Course_areas (
     name TEXT PRIMARY KEY,
     eid INTEGER NOT NULL, -- KEY AND TOTAL PARTICIPATION of the manages relationship
     FOREIGN KEY (eid) REFERENCES Managers(eid) -- Course_areas managed by a manager.
 );
 
+CREATE TABLE Instructors (
+    eid INTEGER REFERENCES Employees(eid), -- IS-A Relationship
+	course_area TEXT REFERENCES course_areas(name),
+	PRIMARY KEY(eid, course_area)
+);
+
+CREATE TABLE Part_time_instructors (
+    eid INTEGER,  -- 2 IS-A Relationship
+	course_area TEXT,
+	PRIMARY KEY (eid, course_area),
+	FOREIGN KEY (eid) REFERENCES Part_time_Emp(eid) ON DELETE CASCADE,
+	FOREIGN KEY (eid, course_area) REFERENCES Instructors(eid, course_area) -- 2 IS-A Relationship
+);
+
+CREATE TABLE Full_time_instructors (
+    eid INTEGER,
+	course_area TEXT,
+	PRIMARY KEY (eid, course_area),
+	FOREIGN KEY (eid) REFERENCES Full_time_Emp(eid) ON DELETE CASCADE,
+	FOREIGN KEY (eid, course_area) REFERENCES Instructors(eid, course_area) -- 2 IS-A Relationship
+);
+
+-- RED INK
 CREATE TABLE Courses (
     course_id INTEGER PRIMARY KEY,
     name TEXT NOT NULL, -- KEY AND TOTAL PARTICIPATION of In relationship
@@ -96,6 +105,7 @@ CREATE TABLE Rooms (
 CREATE TABLE Sessions (
     course_id INTEGER, -- weak entity set to offerings
     launch_date DATE, -- weak entity set to offerings
+	course_area TEXT, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
     rid INTEGER NOT NULL, -- Sessions is in conducts relationship with rooms. KEY AND TOTAL PARTICIPATION
     eid INTEGER NOT NULL, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
     sid SERIAL,
@@ -105,7 +115,7 @@ CREATE TABLE Sessions (
     PRIMARY KEY (course_id, launch_date, sid), -- weak entity set to offerings
     FOREIGN KEY (course_id, launch_date) REFERENCES Offerings(course_id, launch_date) ON DELETE CASCADE, -- weak entity set to offerings
     FOREIGN KEY (rid) REFERENCES Rooms(rid),
-    FOREIGN KEY (eid) REFERENCES Instructors,
+    FOREIGN KEY (eid, course_area) REFERENCES Instructors,
     CHECK (
 		EXTRACT(isodow FROM session_date) in (1,2,3,4,5)
 	),
@@ -119,13 +129,6 @@ CREATE TABLE Sessions (
 	CHECK (
 		(EXTRACT(hours FROM end_time)) > (EXTRACT(hours FROM start_time))
 	) -- Morning and Afternoon Sessions
-);
-
--- BLACK INK
-CREATE TABLE Specializes (
-    eid INTEGER REFERENCES Instructors, -- Specializes connect to instructors. Total participation cannot be capture
-    name TEXT REFERENCES Course_areas, -- Specializes connect to course_areas.
-    PRIMARY KEY(eid, name)
 );
 
 -- CYAN INK
