@@ -80,20 +80,61 @@ RETURNS TRIGGER AS $$
 DECLARE
     total_capacity INTEGER;
 BEGIN
-    total_capacity := (SELECT SUM(seating_capacity)
-                        FROM Sessions as s NATURAL JOIN Rooms as r
-                        WHERE OLD.course_id = s.course_id AND
-                            OLD.launch_date = s.launch_date AND
-                            OLD.sid = s.sid);
+    IF (TG_OP = 'DELETE') THEN
+    -- old here means what was deleted
+        total_capacity := (SELECT SUM(COALESCE(seating_capacity, 0))
+                    FROM Sessions as s NATURAL JOIN Rooms as r
+                    WHERE OLD.course_id = s.course_id AND
+                        OLD.launch_date = s.launch_date);
 
-    UPDATE Offerings SET seating_capacity = total_capacity;
+        UPDATE Offerings SET seating_capacity = total_capacity 
+        WHERE course_id = OLD.course_id 
+            AND launch_date = OLD.launch_date;
 
+        RETURN NEW;
+    ELSE
+        total_capacity := (SELECT SUM(COALESCE(seating_capacity, 0))
+                            FROM Sessions as s NATURAL JOIN Rooms as r
+                            WHERE NEW.course_id = s.course_id AND
+                                NEW.launch_date = s.launch_date);
+
+        UPDATE Offerings SET seating_capacity = total_capacity 
+        WHERE course_id = NEW.course_id 
+            AND launch_date = NEW.launch_date;
+
+        RETURN NEW;
+    END IF;
 END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER SEATING_CAPACITY_COURSE_EQUAL_SUM_OF_SESSIONS_TRIGGER
 AFTER INSERT OR UPDATE OR DELETE ON Sessions
 FOR EACH ROW EXECUTE FUNCTION SEATING_CAPACITY_COURSE_EQUAL_SUM_OF_SESSIONS();
+
+CREATE OR REPLACE FUNCTION ROOMS_CAPACITY_CHANGE()
+RETURNS TRIGGER AS $$
+DECLARE
+    total_capacity INTEGER;
+BEGIN
+
+    total_capacity := (SELECT SUM(COALESCE(seating_capacity, 0))
+                    FROM Sessions as s NATURAL JOIN Rooms as r
+                    WHERE (s.course_id, s.launch_date) IN (SELECT s2.course_id, s2.launch_date
+                            FROM Sessions as s2
+                            WHERE NEW.rid = s2.rid));
+
+    UPDATE Offerings SET seating_capacity = total_capacity 
+        WHERE (course_id, launch_date) IN (SELECT s2.course_id, s2.launch_date
+                FROM Sessions as s2
+                WHERE NEW.rid = s2.rid);
+
+    RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ROOMS_CAPACITY_CHANGE_TRIGGER
+AFTER UPDATE ON Rooms
+FOR EACH ROW EXECUTE FUNCTION ROOMS_CAPACITY_CHANGE();
 
 /* ============================================================================================================ */
 
