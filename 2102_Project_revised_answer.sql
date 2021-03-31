@@ -31,7 +31,7 @@ CREATE TABLE Part_time_Emp (
 CREATE TABLE Full_time_Emp(
     eid INTEGER PRIMARY KEY REFERENCES Employees ON DELETE CASCADE, -- IS-A Relationship
     monthly_salary INTEGER
-
+);
 CREATE TABLE Administrators (
     eid INTEGER PRIMARY KEY REFERENCES Full_time_Emp ON DELETE CASCADE -- IS-A Relationship
 );
