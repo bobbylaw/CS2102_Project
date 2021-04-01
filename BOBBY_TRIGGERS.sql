@@ -143,4 +143,41 @@ BEGIN
 		RAISE EXCEPTION 'OPERATION FAILED: please specify the employee catagory correctly';
 	END IF;
 END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE remove_employee(employee_id INTEGER, departure_date DATE) AS $$
+DECLARE
+	eid_handling_course_offering_count INTEGER = 0;
+	eid_teaching_course_count INTEGER= 0;
+	eid_managing_area_count INTEGER = 0;
+BEGIN
+
+	-- Check if EID exist
+	IF NOT EXISTS(SELECT * from Employees where eid = employee_id) THEN
+		RAISE NOTICE 'Employee ID do not exist';
+		RETURN;
+	END IF;
+	
+	SELECT count(*) INTO eid_handling_course_offering_count
+	FROM Offerings O
+	WHERE O.eid = employee_id;
+	
+	SELECT count(*) INTO eid_teaching_course_count
+	FROM Sessions S
+	WHERE S.eid = employee_id;
+	
+	SELECT count(*) INTO eid_managing_area_count
+	FROM Course_areas C
+	WHERE C.eid = employee_id;
+	
+	IF eid_handling_course_offering_count = 0 AND eid_teaching_course_count = 0 AND eid_managing_area_count = 0 THEN
+	
+		UPDATE Employees
+		SET depart_date = departure_date
+		WHERE eid = employee_id;
+		RAISE NOTICE 'OPERATION SUCCESS';
+	ELSE
+		RAISE NOTICE 'OPERATION FAILED';
+	END IF;
+END;
 $$ LANGUAGE plpgsql

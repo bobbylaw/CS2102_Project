@@ -7,7 +7,7 @@ DROP TYPE salary_information CASCADE;
 CREATE TYPE salary_information AS (
 	salary INTEGER,
 	rate TEXT
-)
+);
 
 -- BLUE INK FIRST
 CREATE TABLE Employees (
