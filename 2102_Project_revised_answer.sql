@@ -2,11 +2,19 @@ DROP TABLE IF EXISTS Employees, Pay_slips, Part_time_Emp, Full_time_Emp, Instruc
 Full_time_instructors, Course_areas, Courses, Offerings, Rooms , Sessions, Customers, Cancels, Owns_credit_cards, 
 Registers, Course_packages, Buys, Redeems CASCADE;
 
-DROP TYPE salary_information CASCADE;
+DROP TYPE IF EXISTS salary_information CASCADE;
+DROP TYPE IF EXISTS session_information CASCADE;
 
 CREATE TYPE salary_information AS (
 	salary INTEGER,
 	rate TEXT
+);
+
+CREATE TYPE session_information AS (
+	session_date DATE,
+	session_start_time TIME,
+	session_end_time TIME,
+	room_id INTEGER
 );
 
 -- BLUE INK FIRST
