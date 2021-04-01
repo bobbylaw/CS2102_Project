@@ -100,6 +100,52 @@ CREATE TRIGGER check_unique_instances_for_instructors
 BEFORE INSERT OR UPDATE ON Instructors
 FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_instructors();
 
+CREATE OR REPLACE FUNCTION check_unique_instances_for_full_time_emp()
+RETURNS TRIGGER AS $$
+DECLARE
+	count_part_timer INTEGER;
+BEGIN
+	SELECT COUNT(*) INTO count_part_timer
+	FROM part_time_emp
+	WHERE NEW.eid = part_time_emp.eid;
+	
+	IF count_part_timer > 0 THEN
+		RAISE NOTICE 'OPERATION FAILED: Current Employee exist in Part Timer Employee';
+		RETURN NULL;
+	ELSE 
+		RETURN NEW;
+	END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER check_unique_instances_for_full_time_emp
+BEFORE INSERT OR UPDATE ON Full_time_emp
+FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_full_time_emp();
+
+CREATE OR REPLACE FUNCTION check_unique_instances_for_part_time_emp()
+RETURNS TRIGGER AS $$
+DECLARE
+	count_full_timer INTEGER;
+BEGIN
+	SELECT COUNT(*) INTO count_full_timer
+	FROM full_time_emp
+	WHERE NEW.eid = full_time_emp.eid;
+	
+	IF full_part_timer > 0 THEN
+		RAISE NOTICE 'OPERATION FAILED: Current Employee exist in Full Timer Employee';
+		RETURN NULL;
+	ELSE 
+		RETURN NEW;
+	END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER check_unique_instances_for_part_time_emp
+BEFORE INSERT OR UPDATE ON Part_time_emp
+FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_part_time_emp();
+
 CREATE OR REPLACE PROCEDURE add_employee(name TEXT, home_address TEXT, contact_number TEXT, email_address TEXT, salary_information SALARY_INFORMATION, join_date DATE, catagory TEXT, course_areas TEXT[] DEFAULT NULL)
 AS $$
 DECLARE
@@ -181,3 +227,6 @@ BEGIN
 	END IF;
 END;
 $$ LANGUAGE plpgsql
+
+--CREATE OR REPLACE PROCEDURE add_course_offerings (course_id INTEGER, course_fees NUMERIC(12,2) launch_date DATE, registration_deadline DATE, administrator, session_info SESSION_INFORMATION[])
+--AS $$
