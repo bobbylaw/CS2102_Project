@@ -54,6 +54,31 @@ The input to the routine is a course offering identifier.
 The routine returns a table of records with the following information for each available session: session date, session start hour, instructor name, and number of remaining seats for that session. 
 The output is sorted in ascending order of session date and start hour.
 */
+CREATE OR REPLACE FUNCTION get_available_course_sessions(IN input_course_id INTEGER, IN input_launch_date DATE)
+RETURNS TABLE
+AS $$
+DECLARE
+    total_avail_capacity INTEGER;
+    before_add_capacity INTEGER;
+BEGIN
+    total_avail_capacity := (SELECT seating_capacity
+                        FROM Offerings
+                        WHERE input_course_id = course_id AND 
+                            input_launch_date = launch_date);
+
+    /* this works because Sessions is a weak entity set to Offerings */
+    before_add_capacity := (SELECT COUNT(*)
+                            FROM Registers
+                            WHERE input_course_id = course_id AND 
+                            input_launch_date = launch_date);
+
+    RETURN QUERY SELECT *
+    FROM Sessions as s NATURAL JOIN Rooms as r
+        WHERE input_course_id = course_id AND 
+            input_launch_date = launch_date);
+
+END
+$$ LANGUAGE plpgsql;
 
 -- register_sessions
 /*

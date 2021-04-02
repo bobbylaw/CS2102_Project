@@ -116,18 +116,25 @@ CREATE OR REPLACE FUNCTION ROOMS_CAPACITY_CHANGE()
 RETURNS TRIGGER AS $$
 DECLARE
     total_capacity INTEGER;
+    r record;
+    curs CURSOR FOR (SELECT SUM(COALESCE(seating_capacity, 0)) as total_capacity, s.course_id, s.launch_date, s.sid
+                    FROM Sessions as s NATURAL JOIN Rooms as r
+                    WHERE (s.course_id, s.launch_date, s.sid) IN (SELECT s2.course_id, s2.launch_date, s2.sid
+                            FROM Sessions as s2
+                            WHERE NEW.rid = s2.rid)
+            GROUP BY s.course_id, s.launch_date, s.sid);
 BEGIN
 
-    total_capacity := (SELECT SUM(COALESCE(seating_capacity, 0))
-                    FROM Sessions as s NATURAL JOIN Rooms as r
-                    WHERE (s.course_id, s.launch_date) IN (SELECT s2.course_id, s2.launch_date
-                            FROM Sessions as s2
-                            WHERE NEW.rid = s2.rid));
+    OPEN curs;
+    LOOP
+        FETCH curs into r; 
+        EXIT WHEN NOT FOUND;
 
-    UPDATE Offerings SET seating_capacity = total_capacity 
-        WHERE (course_id, launch_date) IN (SELECT s2.course_id, s2.launch_date
-                FROM Sessions as s2
-                WHERE NEW.rid = s2.rid);
+        UPDATE Offerings 
+        SET seating_capacity = r.total_capacity 
+        WHERE r.course_id = course_id AND r.launch_date = launch_date;
+
+    END LOOP;
 
     RETURN NEW;
 END
