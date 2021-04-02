@@ -99,3 +99,85 @@ LANGUAGE plpgsql;
 CREATE TRIGGER check_unique_instances_for_instructors
 BEFORE INSERT OR UPDATE ON Instructors
 FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_instructors();
+
+CREATE OR REPLACE PROCEDURE add_employee(name TEXT, home_address TEXT, contact_number TEXT, email_address TEXT, salary_information SALARY_INFORMATION, join_date DATE, catagory TEXT, course_areas TEXT[] DEFAULT NULL)
+AS $$
+DECLARE
+	eid INTEGER := 0;
+BEGIN
+	IF course_areas ISNULL AND catagory <> 'administrator' THEN
+		RAISE EXCEPTION 'OPERATION FAILED: missing course_areas when employee is either instructor or manager';
+	ELSIF course_areas NOTNULL AND catagory = 'administrator' THEN
+		RAISE EXCEPTION 'OPERATION FAILED: course_areas presented when employee is administrator';
+	ELSIF (salary_information.rate) != 'hourly' AND (salary_information.rate) != 'monthly' THEN
+		RAISE EXCEPTION 'OPERATION FAILED: missing salary information';
+	END IF;
+	
+	INSERT INTO Employees (name, address, email, join_date, phone) VALUES(name, home_address, email_address, join_date, contact_number);
+	
+	-- Get latest eid number from Employees table
+	SELECT currval(pg_get_serial_sequence('Employees', 'eid')) into eid;
+
+	IF catagory = 'manager' THEN
+		INSERT INTO full_time_emp (eid, monthly_salary) VALUES (eid, salary_information);
+		INSERT INTO Managers (eid) VALUES (eid);
+		INSERT INTO course_areas (name, eid)
+		SELECT course_area, eid FROM unnest(course_areas) AS course_area;
+	ELSIF catagory = 'administrator' THEN
+		INSERT INTO full_time_emp (eid, monthly_salary) VALUES (eid, salary_information);
+		INSERT INTO Administrators (eid) VALUES (eid);
+	ELSIF catagory = 'instructor' THEN
+		INSERT INTO instructors (eid, course_area)
+		SELECT eid, course_area FROM unnest(course_areas) AS course_area;
+		IF (salary_information).rate = 'monthly' THEN
+			INSERT INTO full_time_emp (eid, monthly_salary) VALUES (eid, salary_information);
+			INSERT INTO full_time_instructors (eid, course_area)
+			SELECT eid, course_area FROM unnest(course_areas) AS course_area;
+		ELSIF (salary_information).rate = 'hourly' THEN
+			INSERT INTO part_time_emp (eid, hourly_rate) VALUES (eid, salary_information);
+			INSERT INTO part_time_instructors (eid, course_area)
+			SELECT eid, course_area FROM unnest(course_areas) AS course_area;
+		END IF;
+	ELSE
+		ROLLBACK;
+		RAISE EXCEPTION 'OPERATION FAILED: please specify the employee catagory correctly';
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE remove_employee(employee_id INTEGER, departure_date DATE) AS $$
+DECLARE
+	eid_handling_course_offering_count INTEGER = 0;
+	eid_teaching_course_count INTEGER= 0;
+	eid_managing_area_count INTEGER = 0;
+BEGIN
+
+	-- Check if EID exist
+	IF NOT EXISTS(SELECT * from Employees where eid = employee_id) THEN
+		RAISE NOTICE 'Employee ID do not exist';
+		RETURN;
+	END IF;
+	
+	SELECT count(*) INTO eid_handling_course_offering_count
+	FROM Offerings O
+	WHERE O.eid = employee_id;
+	
+	SELECT count(*) INTO eid_teaching_course_count
+	FROM Sessions S
+	WHERE S.eid = employee_id;
+	
+	SELECT count(*) INTO eid_managing_area_count
+	FROM Course_areas C
+	WHERE C.eid = employee_id;
+	
+	IF eid_handling_course_offering_count = 0 AND eid_teaching_course_count = 0 AND eid_managing_area_count = 0 THEN
+	
+		UPDATE Employees
+		SET depart_date = departure_date
+		WHERE eid = employee_id;
+		RAISE NOTICE 'OPERATION SUCCESS';
+	ELSE
+		RAISE NOTICE 'OPERATION FAILED';
+	END IF;
+END;
+$$ LANGUAGE plpgsql
