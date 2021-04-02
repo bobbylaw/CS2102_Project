@@ -270,3 +270,37 @@ BEGIN
 	
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_available_course_offerings()
+RETURNS TABLE(course_title TEXT, course_area TEXT, start_date DATE, end_date DATE, registration_deadline DATE,course_fees NUMERIC(12,2),num_of_remaining_seats INTEGER) AS $$
+DECLARE
+	curs CURSOR FOR (SELECT * FROM Offerings);
+	count_register INTEGER;
+	count_redeem INTEGER;
+	r RECORD;
+BEGIN
+	OPEN curs;
+	LOOP
+		FETCH curs INTO r;
+		EXIT WHEN NOT FOUND;
+		start_date := r.start_date;
+		end_date := r.end_date;
+		registration_deadline := r.registration_deadline;
+		course_fees := r.fees;
+		course_title := (SELECT title FROM Courses C WHERE C.course_id = r.course_id);
+		course_area := (SELECT name FROM Courses C WHERE C.course_id = r.course_id);
+			  
+		SELECT count(*) INTO count_register
+		FROM Registers T
+		WHERE T.course_id = r.course_id and T.launch_date = r.launch_date;
+			  
+		SELECT count(*) INTO count_redeem
+		FROM Redeems T
+		WHERE T.course_id = r.course_id and T.launch_date = r.launch_date;
+			  
+		num_of_remaining_seats := r.target_number_registrations - count_register - count_redeem;
+		RETURN NEXT;
+	END LOOP;
+	CLOSE curs;
+END;
+$$ LANGUAGE plpgsql;
