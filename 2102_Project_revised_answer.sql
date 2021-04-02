@@ -63,7 +63,7 @@ CREATE TABLE Course_areas (
 );
 
 CREATE TABLE Instructors (
-    eid INTEGER REFERENCES Employees(eid), -- IS-A Relationship
+    eid INTEGER REFERENCES Employees(eid) ON DELETE CASCADE, -- IS-A Relationship
 	course_area TEXT REFERENCES course_areas(name),
 	PRIMARY KEY(eid, course_area)
 );
@@ -91,7 +91,7 @@ CREATE TABLE Courses (
     title TEXT UNIQUE, -- UNIQUE course_title
     duration INTEGER, -- Integer in mins? 
     description TEXT,
-    FOREIGN KEY (name) REFERENCES Course_areas(name) -- Courses is IN relationship with course_areasa
+    FOREIGN KEY (name) REFERENCES Course_areas(name) -- Courses is IN relationship with course_areas
 );
 
 CREATE TABLE Offerings (
@@ -108,7 +108,7 @@ CREATE TABLE Offerings (
     FOREIGN KEY(eid) REFERENCES Administrators,
     FOREIGN KEY(course_id) REFERENCES Courses(course_id) ON DELETE CASCADE, -- Weak entity set to Courses
     CHECK (
-		(CAST(registration_deadline AS DATE) - CAST(start_date AS DATE)) >= 10
+		(CAST(start_date AS DATE) - CAST(registration_deadline AS DATE)) >= 10
 	) -- Registration deadline must be 10 days before start date
 );
 

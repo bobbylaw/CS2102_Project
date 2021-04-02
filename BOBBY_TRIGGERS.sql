@@ -228,5 +228,39 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
 
---CREATE OR REPLACE PROCEDURE add_course_offerings (course_id INTEGER, course_fees NUMERIC(12,2) launch_date DATE, registration_deadline DATE, administrator, session_info SESSION_INFORMATION[])
---AS $$
+CREATE OR REPLACE PROCEDURE add_course_offerings (course_id INTEGER, course_fees NUMERIC(12,2), launch_date DATE, registration_deadline DATE, target_number_of_registration INTEGER, administrator_id INTEGER, session_info SESSION_INFORMATION[])
+AS $$
+DECLARE
+	available_instructor_id INTEGER;
+	first_session_start_date DATE;
+	total_seating_capacity INTEGER;
+	sessions SESSION_INFORMATION;
+	
+BEGIN
+	SELECT session_date INTO first_session_start_date
+	FROM unnest(session_info)
+	ORDER BY session_date ASC
+	LIMIT 1;
+	
+	SELECT sum(seating_capacity) into total_seating_capacity
+	FROM unnest(session_info) join Rooms ON room_id = rid;
+	
+	IF  (SELECT(CAST(first_session_start_date AS DATE) - CAST(registration_deadline AS DATE))) < 10 THEN
+		RAISE EXCEPTION 'OPERATION FAILED: First session start date must be 10 days more than registration_deadline';
+	ELSIF total_seating_capacity < target_number_of_registration THEN
+		RAISE EXCEPTION 'OPERATION FAILED: target number of registration larger than total number of seating capacity';
+	END IF;
+	
+	FOREACH sessions in ARRAY session_info LOOP
+		IF EXTRACT(isodow FROM (sessions).session_date) not in (1,2,3,4,5) THEN
+			RAISE EXCEPTION 'OPERATION FAILED: Session must be from Monday to Friday';
+		ELSIF (EXTRACT(hours FROM (sessions).session_start_time) < 9 OR EXTRACT(hours FROM (sessions).session_end_time) > 12) AND (EXTRACT(hours FROM (sessions).session_start_time) < 14 OR EXTRACT(hours FROM (sessions).session_end_time) > 18) THEN
+			RAISE EXCEPTION 'OPERATION FAILED: Session time must be from 9am to 12pm or 2pm to 6pm';
+		ELSIF (EXTRACT(hours FROM (sessions).session_end_time)) <= (EXTRACT(hours FROM (sessions).session_start_time)) THEN
+			RAISE EXCEPTION 'OPERATION FAILED: Session start time must be before end time';
+		END IF;
+	END LOOP;
+	
+
+END;
+$$ LANGUAGE plpgsql;
