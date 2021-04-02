@@ -58,24 +58,13 @@ CREATE OR REPLACE FUNCTION get_available_course_sessions(IN input_course_id INTE
 RETURNS TABLE
 AS $$
 DECLARE
-    total_avail_capacity INTEGER;
-    before_add_capacity INTEGER;
+    input_sessions record;
 BEGIN
-    total_avail_capacity := (SELECT seating_capacity
-                        FROM Offerings
-                        WHERE input_course_id = course_id AND 
-                            input_launch_date = launch_date);
 
-    /* this works because Sessions is a weak entity set to Offerings */
-    before_add_capacity := (SELECT COUNT(*)
-                            FROM Registers
-                            WHERE input_course_id = course_id AND 
-                            input_launch_date = launch_date);
+    SELECT sid into input_sessions
+    FROM Sessions as s NATURAL JOIN Offerings as o
+    WHERE input_course_id = o.course_id AND input_launch_date = o.launch_date;
 
-    RETURN QUERY SELECT *
-    FROM Sessions as s NATURAL JOIN Rooms as r
-        WHERE input_course_id = course_id AND 
-            input_launch_date = launch_date);
 
 END
 $$ LANGUAGE plpgsql;

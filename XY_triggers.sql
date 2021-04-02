@@ -117,12 +117,12 @@ RETURNS TRIGGER AS $$
 DECLARE
     total_capacity INTEGER;
     r record;
-    curs CURSOR FOR (SELECT SUM(COALESCE(seating_capacity, 0)) as total_capacity, s.course_id, s.launch_date, s.sid
+    curs CURSOR FOR (SELECT SUM(COALESCE(seating_capacity, 0)) as total_capacity, s.course_id, s.launch_date
                     FROM Sessions as s NATURAL JOIN Rooms as r
                     WHERE (s.course_id, s.launch_date, s.sid) IN (SELECT s2.course_id, s2.launch_date, s2.sid
                             FROM Sessions as s2
                             WHERE NEW.rid = s2.rid)
-            GROUP BY s.course_id, s.launch_date, s.sid);
+            GROUP BY s.course_id, s.launch_date);
 BEGIN
 
     OPEN curs;
