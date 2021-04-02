@@ -15,10 +15,7 @@ BEGIN
 
     SELECT c.cust_id into customer_id
         FROM Customers as c
-        WHERE input_cust_name = c.name
-            AND input_address = c.address
-            AND input_phone = c.phone
-            AND input_email = c.email;
+        WHERE input_email = c.email; -- email is unique, so this identifies a unique cust_id
 
     INSERT INTO Owns_credit_cards(card_number, cust_id, CVV, from_date, expiry_date)
         VALUES(input_card_number, customer_id, input_CVV, NOW(), input_expiry_date);
@@ -31,7 +28,7 @@ $$ LANGUAGE plpgsql;
 This routine is used when a customer requests to change his/her credit card details. 
 The inputs to the routine include the customer identifier and his/her new credit card details (credit card number, expiry date, CVV code).
 */
-CREATE OR REPLACE PROCEDURE update_credit_card(IN input_cust_name TEXT, IN input_address TEXT, IN input_phone TEXT, IN input_email TEXT, IN input_card_number TEXT, IN input_expiry_date DATE, IN input_CVV INTEGER)
+CREATE OR REPLACE PROCEDURE update_credit_card(IN input_email TEXT, IN input_card_number TEXT, IN input_expiry_date DATE, IN input_CVV INTEGER)
 AS $$
 DECLARE
     customer_id INTEGER;
@@ -39,10 +36,7 @@ BEGIN
 
     SELECT c.cust_id into customer_id
         FROM Customers as c
-        WHERE input_cust_name = c.name
-            AND input_address = c.address
-            AND input_phone = c.phone
-            AND input_email = c.email;
+        WHERE input_email = c.email; -- email is unique, so this identifies a unique cust_id
     
     UPDATE Owns_credit_cards
         SET card_number = input_card_number,

@@ -22,7 +22,7 @@ CREATE TABLE Employees (
     eid SERIAL PRIMARY KEY,
     name TEXT,
     address TEXT,
-    email TEXT,
+    email TEXT UNIQUE,
     depart_date DATE,
     join_date DATE,
     phone TEXT
@@ -153,7 +153,7 @@ CREATE TABLE Customers (
     address TEXT,
     phone TEXT,
     name TEXT,
-    email TEXT
+    email TEXT UNIQUE
 );
 
 CREATE TABLE Cancels (
