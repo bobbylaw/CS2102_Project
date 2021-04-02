@@ -59,21 +59,16 @@ RETURNS TABLE (session_date DATE, start_hour float, instructor_name TEXT, remain
 AS $$
 BEGIN
 
-    RETURN query (SELECT s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, e.name as instructor_name, (o.seating_capacity - COUNT(r.card_number)) as remaining_seats
-                    FROM Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN Employees as e
-                    GROUP BY s.session_date, s.start_time, e.name, o.seating_capacity, o.course_id, o.launch_date
-                    HAVING input_course_id = o.course_id AND input_launch_date = o.launch_date
-                    ORDER BY session_date, start_hour);
+    RETURN query (
+        SELECT s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, e.name as instructor_name, (o.seating_capacity - COUNT(r.card_number)) as remaining_seats
+        FROM Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN Employees as e
+        GROUP BY s.session_date, s.start_time, e.name, o.seating_capacity, o.course_id, o.launch_date
+        HAVING input_course_id = o.course_id AND input_launch_date = o.launch_date
+        ORDER BY session_date, start_hour
+    );
 
 END
 $$ LANGUAGE plpgsql;
-
--- register_sessions
-/*
-This routine is used when a customer requests to register for a session in a course offering. 
-The inputs to the routine include the following: customer identifier, course offering identifier, session number, and payment method (credit card or redemption from active package). 
-If the registration transaction is valid, this routine will process the registration with the necessary updates (e.g., payment/redemption).
-*/
 
 -- get_my_registrations
 /*
@@ -82,6 +77,23 @@ The input to the routine is a customer identifier.
 The routine returns a table of records with the following information for each active registration session: course name, course fees, session date, session start hour, session duration, and instructor name. 
 The output is sorted in ascending order of session date and session start hour.
 */
+
+CREATE OR REPLACE FUNCTION get_my_registrations(IN cust_email TEXT)
+RETURNS TABLE (course_name TEXT, course_fees NUMERIC(12, 2), session_date as DATE, start_hour as float, session_duration as float, instructor_name as TEXT)
+AS $$
+BEGIN
+
+    RETURN query (
+        SELECT cse_name as course_name, COALESCE(o.fees, 0) as course_fees, s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, COALESCE(EXTRACT(minutes from (s.end_time - s.start_time)), 0) as session_duration, ename as instructor_name
+        FROM Customers as c NATURAL FULL JOIN Owns_credit_cards as occ NATURAL FULL JOIN Buys as b NATURAL FULL JOIN Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity, fees, end_date FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN (SELECT eid, name as ename FROM Employees) as e NATURAL FULL JOIN (SELECT course_id, name as cse_name FROM Courses) as cse
+        WHERE cust_email = c.email 
+            AND now() <= o.end_date -- not ended condition
+            AND b.num_of_redemption > 0 -- is active condition
+        ORDER BY session_date, start_hour
+    );
+
+END
+$$ LANGUAGE plpgsql;
 
 -- update_course_session
 /*
