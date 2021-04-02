@@ -79,7 +79,7 @@ The output is sorted in ascending order of session date and session start hour.
 */
 
 CREATE OR REPLACE FUNCTION get_my_registrations(IN cust_email TEXT)
-RETURNS TABLE (course_name TEXT, course_fees NUMERIC(12, 2), session_date as DATE, start_hour as float, session_duration as float, instructor_name as TEXT)
+RETURNS TABLE (course_name TEXT, course_fees NUMERIC(12, 2), session_date DATE, start_hour float, session_duration float, instructor_name TEXT)
 AS $$
 BEGIN
 
