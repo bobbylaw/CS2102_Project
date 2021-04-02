@@ -57,14 +57,12 @@ The output is sorted in ascending order of session date and start hour.
 CREATE OR REPLACE FUNCTION get_available_course_sessions(IN input_course_id INTEGER, IN input_launch_date DATE)
 RETURNS TABLE
 AS $$
-DECLARE
-    input_sessions record;
 BEGIN
 
-    SELECT sid into input_sessions
-    FROM Sessions as s NATURAL JOIN Offerings as o
-    WHERE input_course_id = o.course_id AND input_launch_date = o.launch_date;
-
+    RETURN query (SELECT s.session_date, EXTRACT(hours from s.start_time) as start_hour, e.name as instructor_name, (o.seating_capacity - COUNT(r.card_number)) as remaining_seats
+                    FROM Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN Employees as e
+                    GROUP BY s.session_date, s.start_time, e.name, o.seating_capacity, o.course_id, o.launch_date
+                    HAVING input_course_id = o.course_id AND input_launch_date = o.launch_date);
 
 END
 $$ LANGUAGE plpgsql;
