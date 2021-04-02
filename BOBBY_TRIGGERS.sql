@@ -232,20 +232,25 @@ CREATE OR REPLACE PROCEDURE add_course_offerings (course_id INTEGER, course_fees
 AS $$
 DECLARE
 	available_instructor_id INTEGER;
-	first_session_start_date DATE;
+	first_session_date DATE;
+	last_session_date DATE;
 	total_seating_capacity INTEGER;
 	sessions SESSION_INFORMATION;
-	
 BEGIN
-	SELECT session_date INTO first_session_start_date
+	SELECT session_date INTO first_session_date
 	FROM unnest(session_info)
 	ORDER BY session_date ASC
+	LIMIT 1;
+	
+	SELECT session_date INTO last_session_date
+	FROM unnest(session_info)
+	ORDER BY session_date DESC
 	LIMIT 1;
 	
 	SELECT sum(seating_capacity) into total_seating_capacity
 	FROM unnest(session_info) join Rooms ON room_id = rid;
 	
-	IF  (SELECT(CAST(first_session_start_date AS DATE) - CAST(registration_deadline AS DATE))) < 10 THEN
+	IF  (SELECT(CAST(first_session_date AS DATE) - CAST(registration_deadline AS DATE))) < 10 THEN
 		RAISE EXCEPTION 'OPERATION FAILED: First session start date must be 10 days more than registration_deadline';
 	ELSIF total_seating_capacity < target_number_of_registration THEN
 		RAISE EXCEPTION 'OPERATION FAILED: target number of registration larger than total number of seating capacity';
@@ -261,6 +266,7 @@ BEGIN
 		END IF;
 	END LOOP;
 	
-
+	INSERT INTO Offerings (course_id, launch_date, start_date, eid, end_date, registration_deadline, target_num_of_registrations, seating_capacity, fees) VALUES (course_id, launch_date, first_session_date, administrator_id, last_session_date, registration_deadline, target_number_of_registration, total_seating_capacity, course_fees);
+	
 END;
 $$ LANGUAGE plpgsql;
