@@ -39,10 +39,9 @@ DECLARE
 BEGIN
 
     reg_deadline := (SELECT o.registration_deadline
-                        FROM Registers as r NATURAL JOIN Sessions as s NATURAL JOIN Offerings as o
+                        FROM Offerings as o
                         WHERE NEW.course_id = course_id AND 
-                            NEW.launch_date = launch_date AND
-                            NEW.sid = sid);
+                            NEW.launch_date = launch_date);
     
     IF (NEW.registration_date > reg_deadline) THEN
         RAISE EXCEPTION 'You are registering after the deadline!';
@@ -58,6 +57,8 @@ BEGIN
                     FROM (Registers NATURAL JOIN Owns_Credit_Cards) as rcc JOIN Customers as c ON rcc.cust_id = c.cust_id
                     WHERE NEW.card_number = card_number))
             AND NEW.registration_date <= registration_deadline
+            AND NEW.course_id = course_id
+            AND NEW.launch_date = launch_date
     );
 
     IF(counter <> 0) THEN
