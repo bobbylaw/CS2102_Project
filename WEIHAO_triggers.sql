@@ -14,7 +14,6 @@ BEGIN
         RETURN NEW;
     ElSE
         RAISE EXCEPTION 'An instructor who is assigned to teach a course session must be specialized in that course area.';
-        RETURN NULL;
     END IF;
 END;
 $$
@@ -40,12 +39,9 @@ BEGIN
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
-        IF (NEW.start_time BETWEEN r.start_time AND r.end_time) OR
-            (NEW.end_time BETWEEN r.start_time and r.end_time) OR
-            (NEW.start_time < r.start_time AND NEW.end_time > r.end_time) THEN
-                RAISE EXCEPTION 'Instructor can teach at most one course session at any hour';
+        IF (NEW.start_time, NEW.end_time) OVERLAPS (r.start_time, r.end_time) THEN
                 CLOSE curs;
-                RETURN NULL;
+                RAISE EXCEPTION 'Instructor can teach at most one course session at any hour';
         END IF;
     END LOOP;
     CLOSE curs;
@@ -77,9 +73,8 @@ BEGIN
             (AGE(NEW.start_time, r.end_time) < INTERVAL '1 hour')) OR
             ((AGE(NEW.end_time, r.start_time) <= INTERVAL '0 hour') AND
             (AGE(r.start_time, NEW.end_time) < INTERVAL '1 hour')) THEN
-            RAISE EXCEPTION 'No instructor can be assigned to teach two consecutive course sessions';
             CLOSE curs;
-            RETURN NULL;
+            RAISE EXCEPTION 'No instructor can be assigned to teach two consecutive course sessions';
         END IF;
     END LOOP;
     CLOSE curs;
@@ -96,11 +91,12 @@ EXECUTE FUNCTION check_consec_course_session_func();
 
 --  Each part-time instructor must not teach more than 30 hours for each month.
 
-CREATE OR REPLACE FUNCTION max_consec_course_session_func()
+CREATE OR REPLACE FUNCTION max_work_hour_func()
 RETURNS TRIGGER AS
 $$
 DECLARE
-    curs CURSOR FOR (SELECT * FROM Sessions WHERE Sessions.eid = NEW.eid and NEW.eid IN (SELECT eid FROM Part_time_instructors));
+    curs CURSOR FOR (SELECT * FROM Sessions WHERE Sessions.eid = NEW.eid AND NEW.eid IN (SELECT eid FROM Part_time_instructors)
+        AND EXTRACT(month from Sessions.session_date) = EXTRACT(month FROM NEW.session_date));
     r RECORD;
     total_work_hours INTERVAL;
 BEGIN
@@ -109,11 +105,13 @@ BEGIN
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
-        total_work_hours:= total_work_hours +  AGE(r.end_time, r.start_time);
+        total_work_hours:= total_work_hours +  (r.end_time - r.start_time);
     END LOOP;
     CLOSE curs;
 
+    total_work_hours := total_work_hours + (NEW.end_time - NEW.start_time);
     IF total_work_hours <= INTERVAL '30 hours' THEN
+        RAISE NOTICE 'VALUE: %', total_work_hours;
         RETURN NEW;
     ELSE
         RAISE EXCEPTION 'Each part-time instructor must not teach more than 30 hours for each month.';
@@ -126,7 +124,7 @@ CREATE TRIGGER max_work_hour
 BEFORE INSERT OR UPDATE
 ON Sessions
 FOR EACH ROW
-EXECUTE FUNCTION max_consec_course_session_func();
+EXECUTE FUNCTION max_work_hour_func();
 
 
 
@@ -135,6 +133,10 @@ EXECUTE FUNCTION max_consec_course_session_func();
 
 /*
 Test for valid_course_instructor_assignment_func()
+-- INSERT INTO Employees VALUES (1, 'John', 'Bedok', 'John@gmail.com', '2021-05-01', '2021-04-01', 90909090);
+-- INSERT INTO Full_time_Emp VALUES (1, (2000, 'monthly'));
+-- INSERT INTO Administrators VALUES (1);
+
 -- INSERT INTO course_areas VALUES ('Math', 1);
 -- INSERT INTO courses VALUES (1, 'Math', 'Math 1', 60);
 
@@ -143,7 +145,7 @@ Test for valid_course_instructor_assignment_func()
 -- INSERT INTO Full_time_Emp VALUES (2, (1800, 'monthly'));
 -- INSERT INTO Administrators VALUES (2);
 
--- INSERT INTO Offerings VALUES (1, '2020-01-01', '2020-02-01', 2, '2020-06-01', '2020-03-01', 200, 200, 15.99);
+-- INSERT INTO Offerings VALUES (1, '2020-01-01', '2020-02-19', 2, '2020-06-01', '2020-02-01', 200, 200, 15.99);
 
 -- INSERT INTO Employees VALUES (3, 'Jane', 'Pasir Ris', 'Jane@gmail.com', '2021-05-01', '2021-04-01', 70707070);
 -- INSERT INTO Full_time_Emp VALUES (3, (1500, 'monthly'));
@@ -159,7 +161,7 @@ Test for valid_course_instructor_assignment_func()
 -- INSERT INTO course_areas VALUES ('Science', 4);
 -- INSERT INTO courses VALUES (4, 'Science', 'Science 1', 60);
 
--- INSERT INTO Employees VALUES (5, 'Johnson', 'Simei', 'Johnson@gmail.com', '2021-05-01', '2021-04-01', 60606060);
+-- c
 -- INSERT INTO Full_time_Emp VALUES (5, (1500, 'monthly'));
 -- INSERT INTO Instructors VALUES (5, 'Science');
 -- INSERT INTO Full_time_instructors VALUES (5, 'Science');
