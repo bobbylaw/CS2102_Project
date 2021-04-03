@@ -153,16 +153,16 @@ DECLARE
     before_add_capacity INTEGER;
 BEGIN
     avail_capacity := (SELECT o.seating_capacity
-                        FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN Offerings as o
+                        FROM Offerings as o
                         WHERE NEW.course_id = course_id AND 
-                            NEW.launch_date = launch_date AND
-                            NEW.sid = sid);
+                            NEW.launch_date = launch_date);
 
     /* this works because Sessions is a weak entity set to Offerings */
     before_add_capacity := (SELECT COUNT(*)
                             FROM Registers
                             WHERE NEW.course_id = course_id AND 
-                            NEW.launch_date = launch_date);
+                            NEW.launch_date = launch_date AND 
+                            NEW.sid = sid);
     
     IF (avail_capacity - before_add_capacity <= 0) THEN
         RAISE EXCEPTION 'Course offering is fully booked!';

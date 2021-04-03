@@ -102,6 +102,47 @@ The inputs to the routine include the following: customer identifier, course off
 If the update request is valid and there is an available seat in the new session, the routine will process the request with the necessary updates.
 */
 
+CREATE OR REPLACE PROCEDURE update_course_session(IN input_cust_email TEXT, IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER)
+AS $$
+DECLARE
+    avail_capacity INTEGER;
+    old_sid INTEGER;
+    customer_card_number TEXT;
+BEGIN
+    avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
+                        FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
+                        GROUP BY o.seating_capacity, course_id, launch_date, sid
+                        HAVING input_course_id = course_id AND 
+                            input_launch_date = launch_date AND
+                            input_sid = sid);
+    
+    IF (avail_capacity <= 0) THEN -- handles validity and avail check here
+        RAISE EXCEPTION 'There isnt an availible seat in the selected session!';
+    ELSE
+        customer_card_number := (
+            SELECT card_number
+            FROM Customers as c NATURAL JOIN Owns_Credit_Cards as o
+            WHERE c.email = input_cust_email
+        );
+
+        old_sid := ( -- allowed because for each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
+            SELECT sid
+            FROM Registers as r
+            WHERE input_course_id = course_id
+                AND input_launch_date = launch_date
+                AND customer_card_number = card_number
+        );
+
+        UPDATE Registers
+        SET sid = input_sid
+        WHERE old_sid = sid
+            AND input_course_id = course_id
+            AND input_launch_date = launch_date
+            AND customer_card_number = card_number;
+    END IF;
+END
+$$ LANGUAGE plpgsql;
+
 -- remove_session
 /*
 This routine is used to remove a course session. 
