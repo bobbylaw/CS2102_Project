@@ -22,7 +22,7 @@ CREATE TABLE Employees (
     eid SERIAL PRIMARY KEY,
     name TEXT,
     address TEXT,
-    email TEXT,
+    email TEXT UNIQUE NOT NULL,
     depart_date DATE,
     join_date DATE,
     phone TEXT
@@ -86,12 +86,12 @@ CREATE TABLE Full_time_instructors (
 
 -- RED INK
 CREATE TABLE Courses (
-    course_id INTEGER PRIMARY KEY,
+    course_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL, -- KEY AND TOTAL PARTICIPATION of In relationship
     title TEXT UNIQUE, -- UNIQUE course_title
     duration INTEGER, -- Integer in mins? 
     description TEXT,
-    FOREIGN KEY (name) REFERENCES Course_areas(name) -- Courses is IN relationship with course_areasa
+    FOREIGN KEY (name) REFERENCES Course_areas(name) -- Courses is IN relationship with course_areas
 );
 
 CREATE TABLE Offerings (
@@ -108,7 +108,7 @@ CREATE TABLE Offerings (
     FOREIGN KEY(eid) REFERENCES Administrators,
     FOREIGN KEY(course_id) REFERENCES Courses(course_id) ON DELETE CASCADE, -- Weak entity set to Courses
     CHECK (
-		(CAST(registration_deadline AS DATE) - CAST(start_date AS DATE)) >= 10
+		(CAST(start_date AS DATE) - CAST(registration_deadline AS DATE)) >= 10
 	) -- Registration deadline must be 10 days before start date
 );
 
@@ -126,8 +126,8 @@ CREATE TABLE Sessions (
     eid INTEGER NOT NULL, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
     sid SERIAL,
     session_date DATE,
-    start_time TIMESTAMP,
-    end_time TIMESTAMP,
+    start_time TIME,
+    end_time TIME,
     PRIMARY KEY (course_id, launch_date, sid), -- weak entity set to offerings
     FOREIGN KEY (course_id, launch_date) REFERENCES Offerings(course_id, launch_date) ON DELETE CASCADE, -- weak entity set to offerings
     FOREIGN KEY (rid) REFERENCES Rooms(rid),
@@ -153,7 +153,7 @@ CREATE TABLE Customers (
     address TEXT,
     phone TEXT,
     name TEXT,
-    email TEXT
+    email TEXT UNIQUE NOT NULL
 );
 
 CREATE TABLE Cancels (

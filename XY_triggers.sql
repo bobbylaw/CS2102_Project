@@ -39,10 +39,9 @@ DECLARE
 BEGIN
 
     reg_deadline := (SELECT o.registration_deadline
-                        FROM Registers as r NATURAL JOIN Sessions as s NATURAL JOIN Offerings as o
+                        FROM Offerings as o
                         WHERE NEW.course_id = course_id AND 
-                            NEW.launch_date = launch_date AND
-                            NEW.sid = sid);
+                            NEW.launch_date = launch_date);
     
     IF (NEW.registration_date > reg_deadline) THEN
         RAISE EXCEPTION 'You are registering after the deadline!';
@@ -58,6 +57,8 @@ BEGIN
                     FROM (Registers NATURAL JOIN Owns_Credit_Cards) as rcc JOIN Customers as c ON rcc.cust_id = c.cust_id
                     WHERE NEW.card_number = card_number))
             AND NEW.registration_date <= registration_deadline
+            AND NEW.course_id = course_id
+            AND NEW.launch_date = launch_date
     );
 
     IF(counter <> 0) THEN
@@ -115,18 +116,25 @@ CREATE OR REPLACE FUNCTION ROOMS_CAPACITY_CHANGE()
 RETURNS TRIGGER AS $$
 DECLARE
     total_capacity INTEGER;
+    r record;
+    curs CURSOR FOR (SELECT SUM(COALESCE(seating_capacity, 0)) as total_capacity, s.course_id, s.launch_date
+                    FROM Sessions as s NATURAL JOIN Rooms as r
+                    WHERE (s.course_id, s.launch_date, s.sid) IN (SELECT s2.course_id, s2.launch_date, s2.sid
+                            FROM Sessions as s2
+                            WHERE NEW.rid = s2.rid)
+            GROUP BY s.course_id, s.launch_date);
 BEGIN
 
-    total_capacity := (SELECT SUM(COALESCE(seating_capacity, 0))
-                    FROM Sessions as s NATURAL JOIN Rooms as r
-                    WHERE (s.course_id, s.launch_date) IN (SELECT s2.course_id, s2.launch_date
-                            FROM Sessions as s2
-                            WHERE NEW.rid = s2.rid));
+    OPEN curs;
+    LOOP
+        FETCH curs into r; 
+        EXIT WHEN NOT FOUND;
 
-    UPDATE Offerings SET seating_capacity = total_capacity 
-        WHERE (course_id, launch_date) IN (SELECT s2.course_id, s2.launch_date
-                FROM Sessions as s2
-                WHERE NEW.rid = s2.rid);
+        UPDATE Offerings 
+        SET seating_capacity = r.total_capacity 
+        WHERE r.course_id = course_id AND r.launch_date = launch_date;
+
+    END LOOP;
 
     RETURN NEW;
 END
@@ -145,16 +153,16 @@ DECLARE
     before_add_capacity INTEGER;
 BEGIN
     avail_capacity := (SELECT o.seating_capacity
-                        FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN Offerings as o
+                        FROM Offerings as o
                         WHERE NEW.course_id = course_id AND 
-                            NEW.launch_date = launch_date AND
-                            NEW.sid = sid);
+                            NEW.launch_date = launch_date);
 
     /* this works because Sessions is a weak entity set to Offerings */
     before_add_capacity := (SELECT COUNT(*)
                             FROM Registers
                             WHERE NEW.course_id = course_id AND 
-                            NEW.launch_date = launch_date);
+                            NEW.launch_date = launch_date AND 
+                            NEW.sid = sid);
     
     IF (avail_capacity - before_add_capacity <= 0) THEN
         RAISE EXCEPTION 'Course offering is fully booked!';
