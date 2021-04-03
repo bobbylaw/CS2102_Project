@@ -195,3 +195,12 @@ This routine is used to add a new session to a course offering.
 The inputs to the routine include the following: course offering identifier, new session number, new session day, new session start hour, instructor identifier for new session, and room identifier for new session. 
 If the course offering’s registration deadline has not passed and the the addition request is valid, the routine will process the request with the necessary updates.
 */
+
+CREATE OR REPLACE PROCEDURE add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_eid INTEGER, IN input_rid INTEGER)
+AS $$
+DECLARE
+
+BEGIN
+
+END
+$$ LANGUAGE plpgsql;
