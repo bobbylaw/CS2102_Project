@@ -152,6 +152,43 @@ The request must not be performed if there is at least one registration for the 
 Note that the resultant seating capacity of the course offering could fall below the course offering’s target number of registrations, which is allowed.
 */
 
+CREATE OR REPLACE PROCEDURE remove_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER)
+AS $$
+DECLARE
+    num_registration INTEGER;
+    has_started BOOLEAN;
+BEGIN
+    num_registration := (
+        SELECT COUNT(*)
+        FROM Registers
+        WHERE input_course_id = course_id
+            AND input_launch_date = launch_date
+            AND input_sid = sid
+    );
+
+    IF (num_registration <> 0) THEN
+        RAISE EXCEPTION 'There are existing registrations for this session!';
+    END IF;
+
+    has_started := (
+        SELECT now() >= s.start_time
+        FROM Sessions as s
+        WHERE input_course_id = course_id
+            AND input_launch_date = launch_date
+            AND input_sid = sid
+    );
+
+    IF (has_started) THEN
+        RAISE EXCEPTION 'Session has already started!';
+    ELSE 
+        DELETE FROM Sessions
+        WHERE input_course_id = course_id
+            AND input_launch_date = launch_date
+            AND input_sid = sid;
+    END IF;
+END
+$$ LANGUAGE plpgsql;
+
 -- add_session
 /*
 This routine is used to add a new session to a course offering. 
