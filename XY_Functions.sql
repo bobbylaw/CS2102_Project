@@ -199,8 +199,34 @@ If the course offering’s registration deadline has not passed and the the addi
 CREATE OR REPLACE PROCEDURE add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_eid INTEGER, IN input_rid INTEGER)
 AS $$
 DECLARE
-
+    is_valid_session BOOLEAN;
+    input_course_area TEXT;
+    input_course_duration INTEGER;
 BEGIN
+    is_valid_session := (
+        SELECT input_session_day <= o.registration_deadline
+        FROM Offerings as o
+        WHERE input_course_id = course_id
+            AND input_launch_date = launch_date
+    );
 
+    input_course_area := (
+        SELECT name
+        FROM Courses
+        WHERE course_id = input_course_id
+    );
+
+    input_course_duration := (
+        SELECT duration
+        FROM Courses
+        WHERE course_id = input_course_id
+    );
+
+    IF (is_valid_session) THEN
+        INSERT INTO Sessions(course_id, launch_date, course_area, rid, eid, sid, session_date, start_time, end_time)
+        VALUES (input_course_id, input_launch_date, input_course_area, input_rid, input_instructor_eid, input_sid, input_session_day, input_session_start_hour, input_session_start_hour + (interval '01:00' * input_course_duration));
+    ELSE
+        RAISE EXCEPTION 'Input session day is beyond registration deadline!';
+    END IF;
 END
 $$ LANGUAGE plpgsql;

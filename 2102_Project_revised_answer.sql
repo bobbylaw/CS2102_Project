@@ -86,7 +86,7 @@ CREATE TABLE Full_time_instructors (
 
 -- RED INK
 CREATE TABLE Courses (
-    course_id INTEGER PRIMARY KEY,
+    course_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL, -- KEY AND TOTAL PARTICIPATION of In relationship
     title TEXT UNIQUE, -- UNIQUE course_title
     duration INTEGER, -- Integer in mins? 
@@ -124,7 +124,7 @@ CREATE TABLE Sessions (
 	course_area TEXT, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
     rid INTEGER NOT NULL, -- Sessions is in conducts relationship with rooms. KEY AND TOTAL PARTICIPATION
     eid INTEGER NOT NULL, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
-    sid INTEGER,
+    sid SERIAL,
     session_date DATE,
     start_time TIME,
     end_time TIME,
