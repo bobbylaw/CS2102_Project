@@ -13,6 +13,7 @@ BEGIN
     IF NEW.course_area = session_course_area THEN
         RETURN NEW;
     ElSE
+        RAISE EXCEPTION 'An instructor who is assigned to teach a course session must be specialized in that course area.';
         RETURN NULL;
     END IF;
 END;
@@ -32,7 +33,7 @@ CREATE OR REPLACE FUNCTION check_instructor_overlap_session_func()
 RETURNS TRIGGER AS
 $$
 DECLARE
-    curs CURSOR FOR (SELECT * FROM Sessions WHERE NEW.eid = Sessions.eid);
+    curs CURSOR FOR (SELECT * FROM Sessions WHERE Sessions.session_date = NEW.session_date AND NEW.eid = Sessions.eid);
     r RECORD;
 BEGIN
     OPEN curs;
@@ -40,7 +41,9 @@ BEGIN
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
         IF (NEW.start_time BETWEEN r.start_time AND r.end_time) OR
-            (NEW.end_time BETWEEN r.start_time and r.end_time) THEN
+            (NEW.end_time BETWEEN r.start_time and r.end_time) OR
+            (NEW.start_time < r.start_time AND NEW.end_time > r.end_time) THEN
+                RAISE EXCEPTION 'Instructor can teach at most one course session at any hour';
                 CLOSE curs;
                 RETURN NULL;
         END IF;
@@ -70,10 +73,11 @@ BEGIN
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
-        IF ((AGE(NEW.start_time, r.start_time) => INTERVAL '0 hour') AND
+        IF ((AGE(NEW.start_time, r.start_time) >= INTERVAL '0 hour') AND
             (AGE(NEW.start_time, r.end_time) < INTERVAL '1 hour')) OR
             ((AGE(NEW.end_time, r.start_time) <= INTERVAL '0 hour') AND
             (AGE(r.start_time, NEW.end_time) < INTERVAL '1 hour')) THEN
+            RAISE EXCEPTION 'No instructor can be assigned to teach two consecutive course sessions';
             CLOSE curs;
             RETURN NULL;
         END IF;
@@ -100,6 +104,7 @@ DECLARE
     r RECORD;
     total_work_hours INTERVAL;
 BEGIN
+    total_work_hours:= INTERVAL '0 hours';
     OPEN curs;
     LOOP
         FETCH curs INTO r;
@@ -111,7 +116,7 @@ BEGIN
     IF total_work_hours <= INTERVAL '30 hours' THEN
         RETURN NEW;
     ELSE
-        RETURN NULL;
+        RAISE EXCEPTION 'Each part-time instructor must not teach more than 30 hours for each month.';
     END IF;
 END;
 $$
@@ -122,3 +127,60 @@ BEFORE INSERT OR UPDATE
 ON Sessions
 FOR EACH ROW
 EXECUTE FUNCTION max_consec_course_session_func();
+
+
+
+
+
+
+/*
+Test for valid_course_instructor_assignment_func()
+-- INSERT INTO course_areas VALUES ('Math', 1);
+-- INSERT INTO courses VALUES (1, 'Math', 'Math 1', 60);
+
+
+-- INSERT INTO Employees VALUES (2, 'James', 'Tampines', 'James@gmail.com', '2021-05-01', '2021-04-01', 80808080);
+-- INSERT INTO Full_time_Emp VALUES (2, (1800, 'monthly'));
+-- INSERT INTO Administrators VALUES (2);
+
+-- INSERT INTO Offerings VALUES (1, '2020-01-01', '2020-02-01', 2, '2020-06-01', '2020-03-01', 200, 200, 15.99);
+
+-- INSERT INTO Employees VALUES (3, 'Jane', 'Pasir Ris', 'Jane@gmail.com', '2021-05-01', '2021-04-01', 70707070);
+-- INSERT INTO Full_time_Emp VALUES (3, (1500, 'monthly'));
+-- INSERT INTO Instructors VALUES (3, 'Math');
+-- INSERT INTO Full_time_instructors VALUES (3, 'Math');
+
+-- INSERT INTO Rooms VALUES (1, 'Office1', 300);
+-- INSERT INTO Sessions VALUES (1, '2020-01-01', 'Math', 1, 3, 1, '2020-04-15', '2020-04-14 09:00:00', '2020-04-14 11:00:00');
+
+-- INSERT INTO Employees VALUES (4, 'Kevin', 'Woodland', 'Kevin@gmail.com', '2021-05-01', '2021-04-01', 60606060);
+-- INSERT INTO Full_time_Emp VALUES (4, (2000, 'monthly'));
+-- INSERT INTO Managers VALUES (4);
+-- INSERT INTO course_areas VALUES ('Science', 4);
+-- INSERT INTO courses VALUES (4, 'Science', 'Science 1', 60);
+
+-- INSERT INTO Employees VALUES (5, 'Johnson', 'Simei', 'Johnson@gmail.com', '2021-05-01', '2021-04-01', 60606060);
+-- INSERT INTO Full_time_Emp VALUES (5, (1500, 'monthly'));
+-- INSERT INTO Instructors VALUES (5, 'Science');
+-- INSERT INTO Full_time_instructors VALUES (5, 'Science');
+
+-- INSERT INTO Sessions VALUES (1, '2020-01-01', 'Science', 1, 5, 2, '2020-04-15', '2020-04-14 09:00:00', '2020-04-14 11:00:00');
+
+SELECT * FROM Sessions;
+
+*/
+
+
+/*
+-- check_instructor_overlap_session_func()
+-- INSERT INTO Sessions VALUES (1, '2020-01-01', 'Math', 1, 3, 3, '2020-04-15', '2020-04-14 14:00:00', '2020-04-14 17:00:00');
+*/
+
+/*
+-- INSERT INTO Sessions VALUES (1, '2020-01-01', 'Math', 1, 3, 3, '2020-04-15', '2020-04-14 16:00:00', '2020-04-14 17:00:00');
+-- INSERT INTO Sessions VALUES (1, '2020-01-01', 'Math', 1, 3, 3, '2020-04-15', '2020-04-14 14:00:00', '2020-04-14 15:00:00');
+
+-- INSERT INTO Sessions VALUES (1, '2020-01-01', 'Math', 1, 3, 3, '2020-04-15', '2020-04-14 17:00:00', '2020-04-14 18:00:00');
+Last insert suppose to work.
+*/
+

@@ -63,7 +63,7 @@ CREATE TABLE Course_areas (
 );
 
 CREATE TABLE Instructors (
-    eid INTEGER REFERENCES Employees(eid), -- IS-A Relationship
+    eid INTEGER REFERENCES Employees(eid) ON DELETE CASCADE, -- IS-A Relationship
 	course_area TEXT REFERENCES course_areas(name),
 	PRIMARY KEY(eid, course_area)
 );
@@ -73,7 +73,7 @@ CREATE TABLE Part_time_instructors (
 	course_area TEXT,
 	PRIMARY KEY (eid, course_area),
 	FOREIGN KEY (eid) REFERENCES Part_time_Emp(eid) ON DELETE CASCADE,
-	FOREIGN KEY (eid, course_area) REFERENCES Instructors(eid, course_area) -- 2 IS-A Relationship
+	FOREIGN KEY (eid, course_area) REFERENCES Instructors(eid, course_area) ON DELETE CASCADE -- 2 IS-A Relationship
 );
 
 CREATE TABLE Full_time_instructors (
@@ -81,7 +81,7 @@ CREATE TABLE Full_time_instructors (
 	course_area TEXT,
 	PRIMARY KEY (eid, course_area),
 	FOREIGN KEY (eid) REFERENCES Full_time_Emp(eid) ON DELETE CASCADE,
-	FOREIGN KEY (eid, course_area) REFERENCES Instructors(eid, course_area) -- 2 IS-A Relationship
+	FOREIGN KEY (eid, course_area) REFERENCES Instructors(eid, course_area) ON DELETE CASCADE -- 2 IS-A Relationship
 );
 
 -- RED INK
