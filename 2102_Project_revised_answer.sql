@@ -22,7 +22,7 @@ CREATE TABLE Employees (
     eid SERIAL PRIMARY KEY,
     name TEXT,
     address TEXT,
-    email TEXT UNIQUE,
+    email TEXT UNIQUE NOT NULL,
     depart_date DATE,
     join_date DATE,
     phone TEXT
@@ -124,10 +124,10 @@ CREATE TABLE Sessions (
 	course_area TEXT, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
     rid INTEGER NOT NULL, -- Sessions is in conducts relationship with rooms. KEY AND TOTAL PARTICIPATION
     eid INTEGER NOT NULL, -- Sessions is in conducts relationship with Instructor. KEY AND TOTAL PARTICIPATION
-    sid SERIAL,
+    sid INTEGER,
     session_date DATE,
-    start_time TIMESTAMP,
-    end_time TIMESTAMP,
+    start_time TIME,
+    end_time TIME,
     PRIMARY KEY (course_id, launch_date, sid), -- weak entity set to offerings
     FOREIGN KEY (course_id, launch_date) REFERENCES Offerings(course_id, launch_date) ON DELETE CASCADE, -- weak entity set to offerings
     FOREIGN KEY (rid) REFERENCES Rooms(rid),
@@ -153,7 +153,7 @@ CREATE TABLE Customers (
     address TEXT,
     phone TEXT,
     name TEXT,
-    email TEXT UNIQUE
+    email TEXT UNIQUE NOT NULL
 );
 
 CREATE TABLE Cancels (
