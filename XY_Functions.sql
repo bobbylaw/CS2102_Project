@@ -157,6 +157,7 @@ CREATE OR REPLACE PROCEDURE remove_session(IN input_course_id INTEGER, IN input_
 AS $$
 DECLARE
     num_registration INTEGER;
+    num_redemption INTEGER;
     has_started BOOLEAN;
 BEGIN
     num_registration := (
@@ -167,7 +168,15 @@ BEGIN
             AND input_sid = sid
     );
 
-    IF (num_registration <> 0) THEN
+    num_redemption := (
+        SELECT COUNT(*)
+        FROM Redeems
+        WHERE input_course_id = course_id
+            AND input_launch_date = launch_date
+            AND input_sid = sid
+    );
+
+    IF (num_registration <> 0 OR num_redemption <> 0) THEN
         RAISE EXCEPTION 'There are existing registrations for this session!';
     END IF;
 
