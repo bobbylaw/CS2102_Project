@@ -291,7 +291,7 @@ BEGIN
         FETCH curs1 into r1;
         EXIT WHEN NOT FOUND;
 
-        is_popular := 0;
+
         curr_course_id := r1.course_id;
         curr_course_name := r1.name;
         curr_course_title := r1.title;
@@ -308,10 +308,13 @@ BEGIN
                 SELECT *
                 FROM Offerings as o1
                 WHERE curr_course_id = course_id -- select the correct courses
+                ORDER BY start_date
             );
             LOOP
                 FETCH curs2 into r2;
                 EXIT WHEN NOT FOUND;
+
+                is_popular := 1; -- assume course is popular until counter example
 
                 output_course_id := curr_course_id;
                 output_course_title := curr_course_title;
@@ -335,13 +338,17 @@ BEGIN
                         AND start_date > curr_start_date1  -- if start date is later
                 );
 
-                IF (curr_num_registration2 > curr_num_registration1) THEN
-                    output_num_registration_latest_offering := curr_num_registration2;
-                    RETURN NEXT;
+                IF (curr_num_registration2 < curr_num_registration1) THEN
+                    is_popular := 0; -- counter example found when there exist a latter offering with lesser num_reg
                 END IF;
 
+                output_num_registration_latest_offering := curr_num_registration2;
             END LOOP;
             CLOSE curs2;
+
+            IF (is_popular) THEN
+                RETURN NEXT; -- if it went through all the pairs and haven't found a counter example, then good
+            END IF;
         END IF;
 
     END LOOP;
