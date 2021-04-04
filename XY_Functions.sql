@@ -338,7 +338,7 @@ BEGIN
 
                 OPEN curs3 FOR ( -- this curs is for looping through all the offerings with earlier start_dates
                     SELECT *
-                    FROM Registers as r NATURAL FULL JOIN Offerings as o
+                    FROM Registers as r NATURAL FULL JOIN Offerings as o -- do full join incase no one registered for offering
                     WHERE curr_course_id = course_id -- select the correct courses
                         AND start_date < later_start_date  -- if start date is earlier
                     ORDER BY start_date
@@ -350,7 +350,7 @@ BEGIN
 
                     earlier_num_reg := (
                         SELECT COUNT(r.card_number)
-                        FROM Registers as r NATURAL FULL JOIN Offerings as o
+                        FROM Registers as r NATURAL FULL JOIN Offerings as o -- do full join incase no one registered for offering
                         WHERE curr_course_id = course_id -- select the correct courses
                             AND r3.launch_date = launch_date -- select correct offering
                             AND r3.start_date = start_date  -- select the corresponding earlier start date
