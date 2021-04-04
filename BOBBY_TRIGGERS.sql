@@ -357,3 +357,87 @@ BEGIN
 	CLOSE curs;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION promote_courses() 
+RETURNS TABLE(customer_id INTEGER, customer_name TEXT, course_area TEXT, course_id INTEGER, course_title TEXT, course_launch_date DATE, course_registration_deadline DATE, course_fees NUMERIC(12,2)) AS $$
+DECLARE
+	curs1 refcursor;
+	r1 RECORD;
+	
+	curs2 refcursor;
+	r2 RECORD;
+	
+	curs3 refcursor;
+	r3 RECORD;
+	
+	latest_registration_with_each_card_not_within_six_month RECORD;
+	cust_id_with_registration_not_within_six_month RECORD;
+	inactive_customer RECORD;
+BEGIN
+	
+	--get latest registration from inactive card_number which is six month from current date
+	SELECT DISTINCT ON (card_number) card_number INTO latest_registration_with_each_card_not_within_six_month
+	FROM Registers 
+	WHERE CURRENT_DATE - registration_date >= 180 
+	ORDER BY card_number, registration_date DESC;
+	
+	--get cust_id for each inactive customer
+	SELECT cust_id, card_number INTO cust_id_with_registration_not_within_six_month
+	FROM Owns_credit_card natural left join Registers;
+	
+	--get customer information from each inactive customer
+	SELECT cust_id, name INTO inactive_customer
+	FROM Customers natural join cust_id_with_registration_not_within_six_month
+	ORDER BY cust_id ASC;
+	
+	OPEN curs1 FOR (SELECT * FROM inactive_customer);
+	LOOP
+		FETCH curs1 into r1;
+		EXIT WHEN NOT FOUND;
+		--check if customer register before
+		IF r1.course_id ISNULL THEN
+			-- get all offering available since customer has never register before and all area is of interest
+			OPEN curs2 FOR (SELECT course_id, launch_date, registration_deadline, fees FROM Offerings O ORDER BY registration_deadline ASC);
+			LOOP
+				FETCH curs2 into r2;
+				EXIT WHEN NOT FOUND;
+				customer_id := r1.cust_id;
+				customer_name := r1.name;
+				course_id := r2.course_id;
+				course_area := (SELECT course_title FROM Courses C WHERE C.course_id = r2.course_id);
+				course_title := (SELECT course_title FROM Courses C WHERE C.course_id = r2.course_id);
+				course_launch_date := r2.course_id;
+				course_registration_deadline := r2.registration_deadline;
+				course_fees := r2.fees;
+				RETURN NEXT;
+			END LOOP;
+			CLOSE curs2;
+		ELSE
+			--get three latest course registration for each inactive customer, foreach course_area, find the offering available
+			OPEN curs2 FOR (SELECT DISTINCT C.course_area, R.course_id FROM Register R natural join Courses C WHERE R.card_number = r1.card_number ORDER BY registration_date DESC LIMIT 3);
+			LOOP
+				FETCH curs2 into r2;
+				EXIT WHEN NOT FOUND;
+				OPEN curs3 FOR (SELECT course_id, launch_date, registration_deadline, fees FROM Offerings O WHERE O.course_id = r2.course_id ORDER BY registration_deadline ASC);
+				LOOP
+					FETCH curs3 into r3;
+					EXIT WHEN NOT FOUND;
+					customer_id := r1.cust_id;
+					customer_name := r1.name;
+					course_id := r3.course_id;
+					course_area := r2.course_area;
+					course_title := (SELECT course_title FROM Courses C WHERE C.course_id = r3.course_id);
+					course_launch_date := r3.course_id;
+					course_registration_deadline := r3.registration_deadline;
+					course_fees := r3.fees;
+					RETURN NEXT;
+				END LOOP;
+				CLOSE curs3;
+			END LOOP;
+			CLOSE curs2;
+		END IF;
+	END LOOP;
+	CLOSE curs1;
+
+END
+$$ LANGUAGE plpgsql;
