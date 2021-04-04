@@ -240,3 +240,175 @@ BEGIN
     END IF;
 END
 $$ LANGUAGE plpgsql;
+
+-- popular_courses
+/*
+This routine is used to find the popular courses offered this year (i.e., start date is within this year). 
+A course is popular if 
+    the course has at least two offerings this year, 
+    and for every pair of offerings of the course this year, 
+        the offering with the later start date has a higher number of registrations than that of the offering with the earlier start date. 
+The routine returns a table of records consisting of the following information for each popular course: 
+    course identifier, course title, course area, number of offerings this year, and number of registrations for the latest offering this year. 
+The output is sorted in descending order of the number of registrations for the latest offering this year followed by in ascending order of course identifier.
+*/
+
+CREATE OR REPLACE FUNCTION popular_courses_driver()
+RETURNS TABLE (output_course_id INTEGER, 
+                output_course_title TEXT, 
+                output_course_area TEXT, 
+                output_number_of_offerings INTEGER, 
+                output_num_registration_latest_offering INTEGER)
+AS $$
+DECLARE
+    curs1 CURSOR FOR (
+        SELECT DISTINCT course_id, name, title, duration
+        FROM Offerings as o NATURAL JOIN Courses as c
+        WHERE EXTRACT(years FROM now()) = EXTRACT(years from o.start_date)
+        ORDER BY course_id
+    );
+    r1 record;
+
+    curs2 refcursor;
+    r2 record;
+
+    curs3 refcursor;
+    r3 record;
+
+    curr_course_id INTEGER;
+    curr_course_name TEXT;
+    curr_course_title TEXT;
+    curr_course_duration INTEGER;
+
+    later_launch_date DATE;
+    later_start_date DATE;
+    later_num_reg INTEGER;
+
+    earlier_start_date DATE;
+    earlier_num_reg INTEGER;
+
+    is_popular BOOLEAN;
+    num_offerings INTEGER;
+
+BEGIN
+    OPEN curs1; -- this returns offerings that occured this year
+    LOOP -- loop through all the courses
+        FETCH curs1 into r1;
+        EXIT WHEN NOT FOUND;
+
+        is_popular := 1; -- assume course is popular until counter example
+
+        curr_course_id := r1.course_id;
+        curr_course_name := r1.name;
+        curr_course_title := r1.title;
+        curr_course_duration := r1.duration;
+
+        num_offerings := (
+            SELECT count(*)
+            FROM Offerings as o1
+            WHERE curr_course_id = course_id -- select the correct courses
+        );
+
+        IF (num_offerings >= 2) THEN -- only allows courses with num_offerings >= 2
+            OPEN curs2 FOR ( -- loops through all of offerings that has this course_id
+                SELECT *
+                FROM Offerings as o1
+                WHERE curr_course_id = course_id -- select the correct courses
+                ORDER BY start_date
+            );
+
+            LOOP
+                FETCH curs2 into r2;
+                EXIT WHEN NOT FOUND;
+
+                output_course_id := curr_course_id;
+                output_course_title := curr_course_title;
+                output_course_area := curr_course_name;
+                output_number_of_offerings := num_offerings;
+
+                later_start_date := r2.start_date;
+                later_launch_date := r2.launch_date;
+                later_num_reg := (
+                    SELECT COUNT(r.card_number)
+                    FROM Registers as r NATURAL JOIN Offerings as o
+                    WHERE curr_course_id = course_id -- select the correct courses
+                        AND later_launch_date = launch_date -- select the correct offering
+                        AND later_start_date = start_date -- select the later start_date
+                );
+
+                OPEN curs3 FOR ( -- this curs is for looping through all the offerings with earlier start_dates
+                    SELECT *
+                    FROM Registers as r NATURAL FULL JOIN Offerings as o -- do full join incase no one registered for offering
+                    WHERE curr_course_id = course_id -- select the correct courses
+                        AND start_date < later_start_date  -- if start date is earlier
+                    ORDER BY start_date
+                );
+
+                LOOP -- loops through all earlier start dates
+                    FETCH curs3 into r3;
+                    EXIT WHEN NOT FOUND;
+
+                    earlier_num_reg := (
+                        SELECT COUNT(r.card_number)
+                        FROM Registers as r NATURAL FULL JOIN Offerings as o -- do full join incase no one registered for offering
+                        WHERE curr_course_id = course_id -- select the correct courses
+                            AND r3.launch_date = launch_date -- select correct offering
+                            AND r3.start_date = start_date  -- select the corresponding earlier start date
+                    );
+
+                    IF (earlier_num_reg >= later_num_reg) THEN -- since we want all later_num_reg > earlier_num_reg, counter eg is when later_num_reg <= earlier_num_reg
+                        is_popular := 0; -- counter example found when there exist an earlier offering with more or equals number_of_registration
+                    END IF;
+                    
+                END LOOP;
+                CLOSE curs3;
+
+                output_num_registration_latest_offering := later_num_reg; -- this is guranteeed to be latest offering as curs2 is sorted by start_date
+            END LOOP;
+            CLOSE curs2;
+
+            IF (is_popular) THEN
+                RETURN NEXT; -- if it went through all the pairs and haven't found a counter example, then insert into answer
+            END IF;
+
+        END IF;
+
+    END LOOP;
+    CLOSE curs1;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION popular_courses() -- wrapper function so orderby ezpz
+RETURNS TABLE (output_course_id INTEGER, 
+                output_course_title TEXT, 
+                output_course_area TEXT, 
+                output_number_of_offerings INTEGER, 
+                output_num_registration_latest_offering INTEGER)
+AS $$
+BEGIN
+    RETURN QUERY (
+        SELECT *
+        FROM popular_courses_driver()
+        ORDER BY output_num_registration_latest_offering DESC, output_course_id ASC
+    );
+
+END
+$$ LANGUAGE plpgsql;
+
+-- view_manager_report
+/*
+This routine is used to view a report on the sales generated by each manager. 
+The routine returns a table of records consisting of the following information for each manager: 
+    manager name, 
+    total number of course areas that are managed by the manager, 
+    total number of course offerings that ended this year (i.e., the course offering’s end date is within this year) that are managed by the manager, 
+    total net registration fees for all the course offerings that ended this year that are managed by the manager, 
+    the course offering title (i.e., course title) that has the highest total net registration fees among all the course offerings that ended this year that are managed by the manager; 
+        if there are ties, list all these top course offering titles. 
+The total net registration fees for a course offering is defined to be 
+    the sum of the total registration fees paid for the course offering via credit card payment (excluding any refunded fees due to cancellations) 
+    and the total redemption registration fees for the course offering. 
+The redemption registration fees for a course offering refers to the registration fees for a course offering that is paid via a redemption from a course package; 
+    this registration fees is given by the price of the course package divided by the number of sessions included in the course package (rounded down to the nearest dollar). 
+There must be one output record for each manager in the company and the output is to be sorted by ascending order of manager name.
+*/
