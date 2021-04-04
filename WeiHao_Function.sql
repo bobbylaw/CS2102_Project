@@ -1,17 +1,54 @@
 -- find_instructors: This routine is used to find all the instructors who could be assigned to teach a course session. 
 -- The inputs to the routine include the following: course identifier, session date, and session start hour. 
 -- The routine returns a table of records consisting of employee identifier and name.
-CREATE OR REPLACE FUNCTION find_instructors(IN course_id1 INTEGER, IN session_date1 DATE, IN start_time1) -- Is it suppose to be start_time or launch_date because launch date is the PK
+CREATE OR REPLACE FUNCTION find_instructors(IN course_id1 INTEGER, IN session_date1 DATE, IN start_time1 TIME) -- Is it suppose to be start_time or launch_date because launch date is the PK
 RETURNS TABLE(eid INT, name TEXT) AS $$
+DECLARE
+    curs CURSOR FOR (SELECT eid, name FROM Employees -- Instructors can teach course_id1 and avaliable on session_date1
+        WHERE Employees.eid IN (
+            SELECT eid FROM Instructors
+                WHERE Instructors.course_area = (SELECT name FROM Courses WHERE Courses.course_id = NEW.course_id1)
+        )
+        AND NEW.session_date1 BETWEEN Employees.join_date AND Employees.depart_date
+    );
+    r RECORD;
+    is_avail INTEGER;
 BEGIN
-    SELECT DISTINCT eid, name -- There might be chance that there are duplicated instructor.
-    FROM Session S1, Employees E1
-    WHERE S1.eid = E1.eid 
-    AND S1.course_id = course_id1 
-    AND S1.session_date = session_date1
-    AND S1.start_time = start_time1;
+    OPEN curs;
+    LOOP
+        is_avail := 1;
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+
+        SELECT 0 INTO is_avail FROM Sessions -- Instructor already has a session clashing with the start_time
+        WHERE r.eid = Sessions.eid 
+        AND NEW.start_time BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Session.end_time + INTERVAL '1 hour')
+        AND New.session_date1 = Sessions.session_date
+        AND NEW.course_id1 = Session.course_id1 -- This might be redundant but no harm putting. Safer.
+        LIMIT 1; -- In case multiple entry then f up the query.
+
+        IF is_avail = 1 THEN
+            eid := r.eid;
+            name := r.name;
+            RETURN NEXT;
+        END IF;
+    END LOOP;
+    CLOSE curs;
 END;
 $$ LANGUAGE plpgsql;
+
+/*
+Explanation and Implementation
+1. I have to find employees that are an instructor who are able to teach the course AND the date of the session has to during his time in the company.
+    Implementation: I filter the instructor who is able to teach the course then I filter the employees' join date and start date with the session date.
+2. Now there might be clash in timing with the instructor existing session and the new session. So I have to find out which instructor has this clash
+    Implementation: I filter out the all the sessions where new session start time clashes with the sessions that has the same date, course_id and
+                        taught by the instructor I filtered earlier. If it clashes means the filtered instructor is not available, so i set to 0.
+*/
+
+
+
+
 /*
 get_available_instructors :
 This routine is used to retrieve the availability information of instructors who could be assigned to teach a specified course. 
@@ -21,12 +58,94 @@ employee identifier, name, total number of teaching hours that the instructor ha
 and an array of the available hours for the instructor on the specified day. The output is sorted in ascending order of employee identifier and day, 
 and the array entries are sorted in ascending order of hour
 */
+
 CREATE OR REPLACE FUNCTION get_available_instructors(IN course_id INTEGER, IN start_date DATE, IN end_date DATE)
-RETURNS TABLE() AS $$
+RETURNS TABLE(eid INTEGER, total_teaching_hours INTERVAL, month INTEGER, day INTEGER, available_hours TIME[]) AS $$ -- Or use [] for array?
 DECLARE
+    curs CURSOR FOR (SELECT eid, name FROM Employees
+        WHERE Employees.eid IN (
+            SELECT eid FROM Instructors
+                WHERE Instructors.course_area = (SELECT name FROM Courses WHERE Courses.course_id = NEW.course_id1)
+        )
+        ORDER BY eid ASC
+    );
+    r RECORD;
+    start_date_helper DATE;
+    start_time_helper TIME;
+    is_avail INTEGER;
+    total_teaching_hours_helper INTEGER;
+    available_hours_helper TIME[] DEFAULT '{}'; -- Stackoverflow xD
 BEGIN
+    start_date_helper := NEW.start_date;
+    start_time_helper := '09:00:00';
+    is_avail := 1;
+    total_teaching_hours_helper := '0 hour';
+
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        LOOP
+            EXIT WHEN start_date_helper = NEW.end_date;
+
+            is_avail := 1;
+
+            SELECT SUM(end_time - start_time) INTO total_teaching_hours_helper FROM Sessions
+            WHERE Sessions.course_id = NEW.course_id
+            AND Sessions.eid = r.eid
+            AND EXTRACT(Month FROM start_date_helper) = EXTRACT(Month FROM Sessions.session_date);
+
+            IF start_time_helper = '18:00:00' THEN -- 6pm no more lessons.
+                IF array_length(available_hours_helper, 1) > 0 THEN
+                    eid := r.eid;
+                    total_teaching_hours := total_teaching_hours_helper;
+                    SELECT EXTRACT(Month FROM start_date_helper) INTO month;
+                    SELECT EXTRACT(Day FROM start_date_helper) INTO day;
+                    available_hours := available_hours_helper;
+                    RETURN NEXT;
+                END IF;
+                start_time_helper := '09:00:00'; -- Earliest lesson at 9
+                start_date_helper := start_date_helper + INTERVAL '1 day'; -- Next day
+            ELSIF start_time_helper = '12:00:00' THEN
+                start_time_helper := '14:00:00';
+            ELSE
+                SELECT 0 INTO is_avail FROM Sessions 
+                WHERE Sessions.course_id = NEW.course_id
+                AND Session.eid = r.eid
+                AND Sessions.session_date = start_date_helper
+                AND (start_time_helper BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Sessions.end_time + INTERVAL '1 hour'))
+                LIMIT 1; -- In case of multiple entry.
+
+                IF is_avail = 1 THEN
+                    SELECT ARRAY_APPEND(available_hours, start_time_helper) INTO available_hours;
+                END IF;
+                start_time_helper := start_time_helper + INTERVAL '1 hour';
+            END IF;
+        END LOOP;
+        start_date_helper := NEW.start_date;
+        start_time_helper := '09:00:00';
+    END LOOP;
+    CLOSE curs;
+
 END;
 $$ LANGUAGE plpgsql;
+/* Explanation and Implementation:
+1. I have to find instructors who are able to teach the course.
+    Implementation: It is done in the cursor. I filter out the employees who are instructor and are able to teach that course. (eid asc order)
+2. For each day from start_date and end_date, I need to check each instructors (which is filtered already) avaliable HOURS.
+    Implementation: There is 2 loops. Outer loop is loop through the cursor. Outer loop is loop through the date and time.
+        There is nothing much about the outer loop. So for the inner loop, I always calculate the total_work_hour for that month before any checking.
+        The start_date and end_date might stretch across 2 months or more. So there is a possbility that the total_work_hour is different for each iteration.
+        So the IF in the first if-else clause is to transition to the next day and add an entry into the table if there is avaliable hours during that day.
+        The ElSIF is to transition from 12pm to 2pm because that's the break time.
+        The else in the first if-else clause is to check whether there is any hours that the instructor is free on that day. So the select query help me
+        check if the instructor is avaliable for that HOUR.
+        So if the instructor is avaliable on that hour, i append to the avaliable_hours array.
+        The loop only ends after start_date is equal to end_date. Then I proceed do the same for the next filtered instructor.
+*/
+
+
+
 
 /*
 cancel_registration: This routine is used when a customer requests to cancel a registered course session. 
@@ -60,7 +179,7 @@ BEGIN
     FROM Redeems
     WHERE Redeems.course_id = course_identifier 
     AND Redeems.launch_date = offering_launch_date 
-    AND Redeems.sid = session_id
+    AND Redeems.sid = session_id -- Should I add sid? Or should i just deal with course_id and launch date which is PK of offerings.
     AND Redeems.card_number = customer_cc_num
     AND CURRENT_DATE - Redeems.purchase_date <= 7;
 
@@ -78,8 +197,9 @@ BEGIN
     ELSIF (is_register = 1) THEN
         INSERT INTO Cancels
         VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
+        -- Should i update number of remaining redemption is buys?
     ELSE
-        RAISE NOTICE 'Something went wrong. No insertion is done.';
+        RAISE EXCEPTION 'Something went wrong. No insertion is done.';
     END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -93,23 +213,23 @@ If the course session has not yet started and the update request is valid, the r
 CREATE OR REPLACE PROCEDURE update_instructor(IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, IN new_eid INTEGER)
 AS $$
 DECLARE
-    course_session_start_time TIMESTAMP;
+    course_session_start_time TIME;
 BEGIN
     SELECT start_time INTO course_session_start_time
     FROM Sessions
-    WHERE Sessions.course_id = course_identifier
-    AND Sessions.launch_date = offering_launch_date
-    AND Sessions.sid = session_id;
+    WHERE Sessions.course_id = NEW.course_identifier
+    AND Sessions.launch_date = NEW.offering_launch_date
+    AND Sessions.sid = NEW.session_id;
 
-    IF (CURRENT_TIMESTAMP - course_session_start_time > INTERVAL '0 second') THEN
+    IF (CURRENT_TIME > course_session_start_time) THEN
         UPDATE Sessions
-        SET eid = new_eid
-        WHERE Sessions.course_id = course_identifier
-        AND Sessions.launch_date = offering_launch_date
-        AND Sessions.sid = session_id;
+        SET eid = NEW.new_eid
+        WHERE Sessions.course_id = NEW.course_identifier
+        AND Sessions.launch_date = NEW.offering_launch_date
+        AND Sessions.sid = NEW.session_id;
     ELSE
-        RAISE NOTICE 'Invalid request';
-    END IF
+        RAISE EXCEPTION 'The course session has probably started';
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -123,33 +243,33 @@ Note that update request should not be performed if the number of registrations 
 CREATE OR REPLACE PROCEDURE update_room(IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, IN new_rid INTEGER)
 AS $$
 DECLARE
-    course_session_start_time TIMESTAMP;
+    course_session_start_time TIME;
     course_seating_capacity INTEGER;
     new_room_seating_capacity INTEGER;
 BEGIN
     SELECT start_time INTO course_session_start_time
     FROM Sessions
-    WHERE Sessions.course_id = course_identifier
-    AND Sessions.launch_date = offering_launch_date
-    AND Sessions.sid = session_id;
+    WHERE Sessions.course_id = NEW.course_identifier
+    AND Sessions.launch_date = NEW.offering_launch_date
+    AND Sessions.sid = NEW.session_id;
 
     SELECT seating_capacity INTO course_seating_capacity
-    FROM offerings
-    WHERE Offerings.course_id = course_identifier
-    AND Offerings.launch_date = offering_launch_date;
+    FROM Offerings
+    WHERE Offerings.course_id = NEW.course_identifier
+    AND Offerings.launch_date = NEW.offering_launch_date;
 
     SELECT seating_capacity INTO new_room_seating_capacity
     FROM Rooms
-    WHERE Rooms.rid = new_rid;
+    WHERE Rooms.rid = NEW.new_rid;
 
-    IF (CURRENT_TIMESTAMP - course_session_start_time > INTERVAL '0 second') AND (new_room_seating_capacity > course_seating_capacity) THEN
+    IF (CURRENT_TIME > course_session_start_time) AND (new_room_seating_capacity > course_seating_capacity) THEN
         UPDATE Sessions
-        SET rid = new_rid
-        WHERE Sessions.course_id = course_identifier
-        AND Sessions.launch_date = offering_launch_date
-        AND Sessions.sid = session_id;
+        SET rid = NEW.new_rid
+        WHERE Sessions.course_id = NEW.course_identifier
+        AND Sessions.launch_date = NEW.offering_launch_date
+        AND Sessions.sid = NEW.session_id;
     ELSE
-        RAISE NOTICE 'Invalid request';
+        RAISE EXCEPTION 'The course probably has started or the new room doesnt have enough seating capacity';
     END IF;  
 END;
 $$ LANGUAGE plpgsql

@@ -69,10 +69,10 @@ BEGIN
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
-        IF ((AGE(NEW.start_time, r.start_time) >= INTERVAL '0 hour') AND
-            (AGE(NEW.start_time, r.end_time) < INTERVAL '1 hour')) OR
-            ((AGE(NEW.end_time, r.start_time) <= INTERVAL '0 hour') AND
-            (AGE(r.start_time, NEW.end_time) < INTERVAL '1 hour')) THEN
+        IF ((NEW.start_time - r.start_time >= INTERVAL '0 hour') AND
+            (NEW.start_time- r.end_time < INTERVAL '1 hour')) OR
+            ((NEW.end_time - r.start_time <= INTERVAL '0 hour') AND
+            (r.start_time - NEW.end_time < INTERVAL '1 hour')) THEN
             CLOSE curs;
             RAISE EXCEPTION 'No instructor can be assigned to teach two consecutive course sessions';
         END IF;
@@ -111,7 +111,6 @@ BEGIN
 
     total_work_hours := total_work_hours + (NEW.end_time - NEW.start_time);
     IF total_work_hours <= INTERVAL '30 hours' THEN
-        RAISE NOTICE 'VALUE: %', total_work_hours;
         RETURN NEW;
     ELSE
         RAISE EXCEPTION 'Each part-time instructor must not teach more than 30 hours for each month.';
@@ -135,7 +134,7 @@ EXECUTE FUNCTION max_work_hour_func();
 Test for valid_course_instructor_assignment_func()
 -- INSERT INTO Employees VALUES (1, 'John', 'Bedok', 'John@gmail.com', '2021-05-01', '2021-04-01', 90909090);
 -- INSERT INTO Full_time_Emp VALUES (1, (2000, 'monthly'));
--- INSERT INTO Administrators VALUES (1);
+-- INSERT INTO Managers VALUES (1);
 
 -- INSERT INTO course_areas VALUES ('Math', 1);
 -- INSERT INTO courses VALUES (1, 'Math', 'Math 1', 60);
