@@ -146,12 +146,23 @@ CREATE TRIGGER check_unique_instances_for_part_time_emp
 BEFORE INSERT OR UPDATE ON Part_time_emp
 FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_part_time_emp();
 
+/*Explanation
+1. Check whether input is valid
+	- catagory must be manager, administrator or instructor
+	- course areas cannot be NULL when it is not an administrator
+	- course areas NULL when it is an administrator
+	- salary rate is hourly when it is a manager or administrator
+	- salary rate not equals to 'monthly' or 'hourly'
+2. Insert into Employee first followed by inserting into respectively tables based on catagory and rate
+*/
 CREATE OR REPLACE PROCEDURE add_employee(name TEXT, home_address TEXT, contact_number TEXT, email_address TEXT, salary_information SALARY_INFORMATION, join_date DATE, catagory TEXT, course_areas TEXT[] DEFAULT NULL)
 AS $$
 DECLARE
 	eid INTEGER := 0;
 BEGIN
-	IF course_areas ISNULL AND catagory <> 'administrator' THEN
+	IF catagory != 'manager' or catagory != 'administrator' or catagory != 'instructor' THEN
+		RAISE EXCEPTION 'OPERATION FAILED: please specify the employee catagory correctly';
+	ELSIF course_areas ISNULL AND catagory <> 'administrator' THEN
 		RAISE EXCEPTION 'OPERATION FAILED: missing course_areas when employee is either instructor or manager';
 	ELSIF course_areas NOTNULL AND catagory = 'administrator' THEN
 		RAISE EXCEPTION 'OPERATION FAILED: course_areas presented when employee is administrator';
@@ -186,13 +197,18 @@ BEGIN
 			INSERT INTO part_time_instructors (eid, course_area)
 			SELECT eid, course_area FROM unnest(course_areas) AS course_area;
 		END IF;
-	ELSE
-		ROLLBACK;
-		RAISE EXCEPTION 'OPERATION FAILED: please specify the employee catagory correctly';
 	END IF;
 END;
 $$ LANGUAGE plpgsql;
 
+/*Explanation
+1. Check if EID exist inside Employee table
+2. Get respective count for 
+	(1) the employee is an administrator who is handling some course offering where its registration deadline is after the employee’s departure date
+	(2) the employee is an instructor who is teaching some course session that starts after the employee’s departure date
+	(3) the employee is a manager who is managing some area
+3. Only updates if all count is 0
+*/
 CREATE OR REPLACE PROCEDURE remove_employee(employee_id INTEGER, departure_date DATE) AS $$
 DECLARE
 	eid_handling_course_offering_count INTEGER = 0;
@@ -219,17 +235,30 @@ BEGIN
 	WHERE C.eid = employee_id;
 	
 	IF eid_handling_course_offering_count = 0 AND eid_teaching_course_count = 0 AND eid_managing_area_count = 0 THEN
-	
 		UPDATE Employees
 		SET depart_date = departure_date
 		WHERE eid = employee_id;
 		RAISE NOTICE 'OPERATION SUCCESS';
 	ELSE
-		RAISE NOTICE 'OPERATION FAILED';
+		RAISE NOTICE 'OPERATION FAILED: Employee is currently still tied to some work';
 	END IF;
 END;
 $$ LANGUAGE plpgsql;
 
+/*Explanation
+1. Check whether input is valid
+	- First session start date must be 10 days more than registration_deadline
+	- target number of registration larger than total number of seating capacity
+2. Check session input is valid
+	- Session must be from Monday to Friday
+	- Session time must be from 9am to 12pm or 2pm to 6pm
+	- Session start time must be before end time
+3. Insert course_offering into Offering table
+4. For each Session,
+	- pick the first instructor available using find_instructor
+	- get the course_area related to this instructor
+	- INSERT session into Session table
+*/
 CREATE OR REPLACE PROCEDURE add_course_offerings (course_id INTEGER, course_fees NUMERIC(12,2), launch_date DATE, registration_deadline DATE, target_number_of_registration INTEGER, administrator_id INTEGER, session_info SESSION_INFORMATION[])
 AS $$
 DECLARE
@@ -239,6 +268,8 @@ DECLARE
 	session_end_time TIME;
 	total_seating_capacity INTEGER;
 	sessions SESSION_INFORMATION;
+	instructor_available INTEGER;
+	course_area_of_instructor TEXT;
 BEGIN
 	SELECT session_date INTO first_session_date
 	FROM unnest(session_info)
@@ -252,8 +283,6 @@ BEGIN
 	
 	SELECT sum(seating_capacity) into total_seating_capacity
 	FROM unnest(session_info) join Rooms ON room_id = rid;
-	
-	session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = course_id) * INTERVAL '1 hour';
 	
 	IF  (SELECT(CAST(first_session_date AS DATE) - CAST(registration_deadline AS DATE))) < 10 THEN
 		RAISE EXCEPTION 'OPERATION FAILED: First session start date must be 10 days more than registration_deadline';
@@ -273,9 +302,21 @@ BEGIN
 	
 	INSERT INTO Offerings (course_id, launch_date, start_date, eid, end_date, registration_deadline, target_num_of_registrations, seating_capacity, fees) VALUES (course_id, launch_date, first_session_date, administrator_id, last_session_date, registration_deadline, target_number_of_registration, total_seating_capacity, course_fees);
 	
+	FOREACH sessions in ARRAY session_info LOOP
+		session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = course_id) * INTERVAL '1 hour';
+		instructor_available := (SELECT eid FROM find_instructors(course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1);
+		course_area_of_instructor := (SELECT course_area FROM Instructors WHERE eid = instructor_available);
+		INSERT INTO Sessions(course_id, launch_date, course_area, rid, eid, session_date, start_time, end_time)
+		VALUES (course_id, launch_date, course_area_of_instructor, (sessions).rid, instructor_available, (sessions).session_date, (sessions).session_start_time, session_end_time);
+	END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
+/*Explanation
+1. Get all course_offerings detail including course_area, title using join operation
+2. Calculate the remaining num of registration left based on target_num_registration - (count(Register) + count(Redeem)) where course_id and launch_date is the same
+3. Return table
+*/
 CREATE OR REPLACE FUNCTION get_available_course_offerings()
 RETURNS TABLE(course_title TEXT, course_area TEXT, start_date DATE, end_date DATE, registration_deadline DATE,course_fees NUMERIC(12,2),num_of_remaining_seats INTEGER) AS $$
 DECLARE
@@ -310,6 +351,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+/*Explanation
+1. Calculate the start_of_month, end_of_month, days_in_month
+2. Open cursor for full_time union part_time <-- due to this, monthly_salary will be the common attribute for salary information
+3. Calculate salary based on work_days(not including sat/sun)/total_month * monthly_salary for full time and work_hour * hourly_rate for part time
+4. insert salary into pay_slip table
+*/
 CREATE OR REPLACE FUNCTION pay_salary()
 RETURNS TABLE(employee_id INTEGER, employee_name TEXT, status TEXT, num_work_days INTEGER, num_work_hours INTEGER, hourly_rate INTEGER, monthly_salary INTEGER, salary_amount_paid NUMERIC(5,2)) AS $$
 DECLARE
@@ -358,6 +405,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+/*Explanation
+1. Get latest registration of each customer where the register_date is 6 months after current date (inactive customer)
+2. Get customer information using the card_number from the latest registration (inactive customer)
+3. For each customer, get the latest 3 registation course_id, course_area,
+using this course_area, fetch offering that match the course_area.
+insert the values into output table
+4. For customer that has not register a course, find all offering available and output since all course_area is of interest
+*/
 CREATE OR REPLACE FUNCTION promote_courses() 
 RETURNS TABLE(customer_id INTEGER, customer_name TEXT, course_area TEXT, course_id INTEGER, course_title TEXT, course_launch_date DATE, course_registration_deadline DATE, course_fees NUMERIC(12,2)) AS $$
 DECLARE
@@ -414,11 +469,11 @@ BEGIN
 			CLOSE curs2;
 		ELSE
 			--get three latest course registration for each inactive customer, foreach course_area, find the offering available
-			OPEN curs2 FOR (SELECT DISTINCT C.course_area, R.course_id FROM Register R natural join Courses C WHERE R.card_number = r1.card_number ORDER BY registration_date DESC LIMIT 3);
+			OPEN curs2 FOR (SELECT DISTINCT C.name, R.course_id FROM Register R natural join Courses C WHERE R.card_number = r1.card_number ORDER BY registration_date DESC LIMIT 3);
 			LOOP
 				FETCH curs2 into r2;
 				EXIT WHEN NOT FOUND;
-				OPEN curs3 FOR (SELECT course_id, launch_date, registration_deadline, fees FROM Offerings O WHERE O.course_id = r2.course_id ORDER BY registration_deadline ASC);
+				OPEN curs3 FOR (SELECT course_id, launch_date, registration_deadline, fees FROM Offerings O natural join Courses C WHERE C.name = r2.course_area ORDER BY registration_deadline ASC);
 				LOOP
 					FETCH curs3 into r3;
 					EXIT WHEN NOT FOUND;
