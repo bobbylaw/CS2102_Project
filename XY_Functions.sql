@@ -262,8 +262,9 @@ RETURNS TABLE (output_course_id INTEGER,
 AS $$
 DECLARE
     curs1 CURSOR FOR (
-        SELECT *
-        FROM Courses
+        SELECT DISTINCT course_id, name, title, duration
+        FROM Offerings as o NATURAL JOIN Courses as c
+        WHERE EXTRACT(years FROM now()) = EXTRACT(years from o.start_date)
     );
     r1 record;
 
@@ -289,7 +290,7 @@ DECLARE
     num_offerings INTEGER;
 
 BEGIN
-    OPEN curs1;
+    OPEN curs1; -- this returns offerings that occured this year
     LOOP -- loop through all the courses
         FETCH curs1 into r1;
         EXIT WHEN NOT FOUND;
