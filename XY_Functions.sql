@@ -270,6 +270,9 @@ DECLARE
     curs2 refcursor;
     r2 record;
 
+    curs3 refcursor;
+    r3 record;
+
     curr_course_id INTEGER;
     curr_course_name TEXT;
     curr_course_title TEXT;
@@ -330,17 +333,30 @@ BEGIN
                         AND later_launch_date = launch_date
                 );
 
-                earlier_num_reg := ( -- this num_reg is for earlier offerings
-                    SELECT COUNT(r.card_number)
+                OPEN curs3 FOR ( -- this curs is for looping through all the offerings with earlier start_dates
+                    SELECT *
                     FROM Registers as r NATURAL JOIN Offerings as o
                     WHERE curr_course_id = course_id -- select the correct courses
                         AND later_launch_date = launch_date -- select correct offering
                         AND start_date < later_start_date  -- if start date is earlier
                 );
 
-                IF (earlier_num_reg > later_num_reg) THEN
-                    is_popular := 0; -- counter example found when there exist an earlier offering with more number_of_registration
-                END IF;
+                LOOP -- loops through all possible start dates
+                    FETCH curs3 into r3;
+                    EXIT WHEN NOT FOUND;
+
+                    earlier_num_reg := (
+                        SELECT COUNT(r.card_number)
+                        FROM Registers as r NATURAL JOIN Offerings as o
+                        WHERE curr_course_id = course_id -- select the correct courses
+                            AND later_launch_date = launch_date -- select correct offering
+                            AND start_date = r3.start_date  -- select the corresponding earlier start date
+                    );
+                    IF (earlier_num_reg > later_num_reg) THEN
+                        is_popular := 0; -- counter example found when there exist an earlier offering with more number_of_registration
+                    END IF;
+                END LOOP;
+                CLOSE curs3;
 
                 output_num_registration_latest_offering := later_num_reg;
             END LOOP;
