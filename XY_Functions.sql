@@ -296,6 +296,7 @@ BEGIN
         FETCH curs1 into r1;
         EXIT WHEN NOT FOUND;
 
+        is_popular := 1; -- assume course is popular until counter example
 
         curr_course_id := r1.course_id;
         curr_course_name := r1.name;
@@ -309,17 +310,16 @@ BEGIN
         );
 
         IF (num_offerings >= 2) THEN -- only allows courses with num_offerings >= 2
-            OPEN curs2 FOR (
+            OPEN curs2 FOR ( -- loops through all of offerings that has this course_id
                 SELECT *
                 FROM Offerings as o1
                 WHERE curr_course_id = course_id -- select the correct courses
                 ORDER BY start_date
             );
+
             LOOP
                 FETCH curs2 into r2;
                 EXIT WHEN NOT FOUND;
-
-                is_popular := 1; -- assume course is popular until counter example
 
                 output_course_id := curr_course_id;
                 output_course_title := curr_course_title;
@@ -332,31 +332,34 @@ BEGIN
                     SELECT COUNT(r.card_number)
                     FROM Registers as r NATURAL JOIN Offerings as o
                     WHERE curr_course_id = course_id -- select the correct courses
-                        AND later_launch_date = launch_date
+                        AND later_launch_date = launch_date -- select the correct offering
+                        AND later_start_date = start_date -- select the later start_date
                 );
 
                 OPEN curs3 FOR ( -- this curs is for looping through all the offerings with earlier start_dates
                     SELECT *
-                    FROM Registers as r NATURAL JOIN Offerings as o
+                    FROM Registers as r NATURAL FULL JOIN Offerings as o
                     WHERE curr_course_id = course_id -- select the correct courses
-                        AND later_launch_date = launch_date -- select correct offering
                         AND start_date < later_start_date  -- if start date is earlier
+                    ORDER BY start_date
                 );
 
-                LOOP -- loops through all possible start dates
+                LOOP -- loops through all earlier start dates
                     FETCH curs3 into r3;
                     EXIT WHEN NOT FOUND;
 
                     earlier_num_reg := (
                         SELECT COUNT(r.card_number)
-                        FROM Registers as r NATURAL JOIN Offerings as o
+                        FROM Registers as r NATURAL FULL JOIN Offerings as o
                         WHERE curr_course_id = course_id -- select the correct courses
-                            AND later_launch_date = launch_date -- select correct offering
-                            AND start_date = r3.start_date  -- select the corresponding earlier start date
+                            AND r3.launch_date = launch_date -- select correct offering
+                            AND r3.start_date = start_date  -- select the corresponding earlier start date
                     );
-                    IF (earlier_num_reg > later_num_reg) THEN
-                        is_popular := 0; -- counter example found when there exist an earlier offering with more number_of_registration
+
+                    IF (earlier_num_reg >= later_num_reg) THEN -- since we want all later_num_reg > earlier_num_reg, counter eg is when later_num_reg <= earlier_num_reg
+                        is_popular := 0; -- counter example found when there exist an earlier offering with more or equals number_of_registration
                     END IF;
+                    
                 END LOOP;
                 CLOSE curs3;
 
@@ -367,6 +370,7 @@ BEGIN
             IF (is_popular) THEN
                 RETURN NEXT; -- if it went through all the pairs and haven't found a counter example, then insert into answer
             END IF;
+
         END IF;
 
     END LOOP;
