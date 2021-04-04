@@ -63,7 +63,7 @@ BEGIN
         SELECT s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, e.name as instructor_name, (o.seating_capacity - COUNT(r.card_number)) as remaining_seats
         FROM Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN Employees as e
         GROUP BY s.session_date, s.start_time, e.name, o.seating_capacity, o.course_id, o.launch_date
-        HAVING input_course_id = o.course_id AND input_launch_date = o.launch_date
+        HAVING input_course_id = o.course_id AND input_launch_date = o.launch_date AND remaining_seats > 0
         ORDER BY session_date, start_hour
     );
 
@@ -131,6 +131,7 @@ BEGIN
             WHERE input_course_id = course_id
                 AND input_launch_date = launch_date
                 AND customer_card_number = card_number
+            LIMIT 1
         );
 
         UPDATE Registers
