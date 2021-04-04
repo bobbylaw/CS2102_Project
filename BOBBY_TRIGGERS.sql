@@ -236,6 +236,7 @@ DECLARE
 	available_instructor_id INTEGER;
 	first_session_date DATE;
 	last_session_date DATE;
+	session_end_time TIME;
 	total_seating_capacity INTEGER;
 	sessions SESSION_INFORMATION;
 BEGIN
@@ -252,6 +253,8 @@ BEGIN
 	SELECT sum(seating_capacity) into total_seating_capacity
 	FROM unnest(session_info) join Rooms ON room_id = rid;
 	
+	session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = course_id) * INTERVAL '1 hour';
+	
 	IF  (SELECT(CAST(first_session_date AS DATE) - CAST(registration_deadline AS DATE))) < 10 THEN
 		RAISE EXCEPTION 'OPERATION FAILED: First session start date must be 10 days more than registration_deadline';
 	ELSIF total_seating_capacity < target_number_of_registration THEN
@@ -261,9 +264,9 @@ BEGIN
 	FOREACH sessions in ARRAY session_info LOOP
 		IF EXTRACT(isodow FROM (sessions).session_date) not in (1,2,3,4,5) THEN
 			RAISE EXCEPTION 'OPERATION FAILED: Session must be from Monday to Friday';
-		ELSIF (EXTRACT(hours FROM (sessions).session_start_time) < 9 OR EXTRACT(hours FROM (sessions).session_end_time) > 12) AND (EXTRACT(hours FROM (sessions).session_start_time) < 14 OR EXTRACT(hours FROM (sessions).session_end_time) > 18) THEN
+		ELSIF (EXTRACT(hours FROM (sessions).session_start_time) < 9 OR EXTRACT(hours FROM session_end_time) > 12) AND (EXTRACT(hours FROM (sessions).session_start_time) < 14 OR EXTRACT(hours FROM session_end_time) > 18) THEN
 			RAISE EXCEPTION 'OPERATION FAILED: Session time must be from 9am to 12pm or 2pm to 6pm';
-		ELSIF (EXTRACT(hours FROM (sessions).session_end_time)) <= (EXTRACT(hours FROM (sessions).session_start_time)) THEN
+		ELSIF (EXTRACT(hours FROM session_end_time)) <= (EXTRACT(hours FROM (sessions).session_start_time)) THEN
 			RAISE EXCEPTION 'OPERATION FAILED: Session start time must be before end time';
 		END IF;
 	END LOOP;

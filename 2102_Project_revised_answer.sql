@@ -13,7 +13,6 @@ CREATE TYPE salary_information AS (
 CREATE TYPE session_information AS (
 	session_date DATE,
 	session_start_time TIME,
-	session_end_time TIME,
 	room_id INTEGER
 );
 
