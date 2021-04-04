@@ -275,12 +275,12 @@ DECLARE
     curr_course_title TEXT;
     curr_course_duration INTEGER;
 
-    curr_launch_date1 DATE;
-    curr_start_date1 DATE;
-    curr_num_registration1 INTEGER;
+    later_launch_date DATE;
+    later_start_date DATE;
+    later_num_reg INTEGER;
 
-    curr_start_date2 DATE;
-    curr_num_registration2 INTEGER;
+    earlier_start_date DATE;
+    earlier_num_reg INTEGER;
 
     is_popular BOOLEAN;
     num_offerings INTEGER;
@@ -321,33 +321,33 @@ BEGIN
                 output_course_area := curr_course_name;
                 output_number_of_offerings := num_offerings;
 
-                curr_start_date1 := r2.start_date;
-                curr_launch_date1 := r2.launch_date;
-                curr_num_registration1 := (
+                later_start_date := r2.start_date;
+                later_launch_date := r2.launch_date;
+                later_num_reg := (
                     SELECT COUNT(r.card_number)
                     FROM Registers as r NATURAL JOIN Offerings as o
                     WHERE curr_course_id = course_id -- select the correct courses
-                        AND curr_launch_date1 = launch_date
+                        AND later_launch_date = launch_date
                 );
 
-                curr_num_registration2 := (
+                earlier_num_reg := ( -- this num_reg is for earlier offerings
                     SELECT COUNT(r.card_number)
                     FROM Registers as r NATURAL JOIN Offerings as o
                     WHERE curr_course_id = course_id -- select the correct courses
-                        AND curr_launch_date1 = launch_date -- select correct offering
-                        AND start_date > curr_start_date1  -- if start date is later
+                        AND later_launch_date = launch_date -- select correct offering
+                        AND start_date < later_start_date  -- if start date is earlier
                 );
 
-                IF (curr_num_registration2 < curr_num_registration1) THEN
-                    is_popular := 0; -- counter example found when there exist a latter offering with lesser num_reg
+                IF (earlier_num_reg > later_num_reg) THEN
+                    is_popular := 0; -- counter example found when there exist an earlier offering with more number_of_registration
                 END IF;
 
-                output_num_registration_latest_offering := curr_num_registration2;
+                output_num_registration_latest_offering := later_num_reg;
             END LOOP;
             CLOSE curs2;
 
             IF (is_popular) THEN
-                RETURN NEXT; -- if it went through all the pairs and haven't found a counter example, then good
+                RETURN NEXT; -- if it went through all the pairs and haven't found a counter example, then insert into answer
             END IF;
         END IF;
 
