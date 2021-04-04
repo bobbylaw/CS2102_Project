@@ -253,7 +253,7 @@ The routine returns a table of records consisting of the following information f
 The output is sorted in descending order of the number of registrations for the latest offering this year followed by in ascending order of course identifier.
 */
 
-CREATE OR REPLACE FUNCTION popular_courses()
+CREATE OR REPLACE FUNCTION popular_courses_driver()
 RETURNS TABLE (output_course_id INTEGER, 
                 output_course_title TEXT, 
                 output_course_area TEXT, 
@@ -265,6 +265,7 @@ DECLARE
         SELECT DISTINCT course_id, name, title, duration
         FROM Offerings as o NATURAL JOIN Courses as c
         WHERE EXTRACT(years FROM now()) = EXTRACT(years from o.start_date)
+        ORDER BY course_id
     );
     r1 record;
 
@@ -359,7 +360,7 @@ BEGIN
                 END LOOP;
                 CLOSE curs3;
 
-                output_num_registration_latest_offering := later_num_reg;
+                output_num_registration_latest_offering := later_num_reg; -- this is guranteeed to be latest offering as curs2 is sorted by start_date
             END LOOP;
             CLOSE curs2;
 
@@ -370,6 +371,23 @@ BEGIN
 
     END LOOP;
     CLOSE curs1;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION popular_courses() -- wrapper function so orderby ezpz
+RETURNS TABLE (output_course_id INTEGER, 
+                output_course_title TEXT, 
+                output_course_area TEXT, 
+                output_number_of_offerings INTEGER, 
+                output_num_registration_latest_offering INTEGER)
+AS $$
+BEGIN
+    RETURN QUERY (
+        SELECT *
+        FROM popular_courses_driver()
+        ORDER BY output_num_registration_latest_offering DESC, output_course_id ASC
+    );
+
 END
 $$ LANGUAGE plpgsql;
 
