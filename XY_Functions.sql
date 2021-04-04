@@ -60,10 +60,10 @@ AS $$
 BEGIN
 
     RETURN query (
-        SELECT s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, e.name as instructor_name, (o.seating_capacity - COUNT(r.card_number)) as remaining_seats
-        FROM Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN Employees as e
+        SELECT s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, e.name as instructor_name, (o.seating_capacity - COUNT(re.redemption_date) - COUNT(r.card_number)) as remaining_seats
+        FROM Registers as r NATURAL FULL JOIN Redeems as re NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN Employees as e
         GROUP BY s.session_date, s.start_time, e.name, o.seating_capacity, o.course_id, o.launch_date
-        HAVING input_course_id = o.course_id AND input_launch_date = o.launch_date
+        HAVING input_course_id = o.course_id AND input_launch_date = o.launch_date AND o.seating_capacity - COUNT(re.redemption_date) - COUNT(r.card_number) > 0
         ORDER BY session_date, start_hour
     );
 
@@ -131,6 +131,7 @@ BEGIN
             WHERE input_course_id = course_id
                 AND input_launch_date = launch_date
                 AND customer_card_number = card_number
+            LIMIT 1
         );
 
         UPDATE Registers
@@ -156,6 +157,7 @@ CREATE OR REPLACE PROCEDURE remove_session(IN input_course_id INTEGER, IN input_
 AS $$
 DECLARE
     num_registration INTEGER;
+    num_redemption INTEGER;
     has_started BOOLEAN;
 BEGIN
     num_registration := (
@@ -166,7 +168,15 @@ BEGIN
             AND input_sid = sid
     );
 
-    IF (num_registration <> 0) THEN
+    num_redemption := (
+        SELECT COUNT(*)
+        FROM Redeems
+        WHERE input_course_id = course_id
+            AND input_launch_date = launch_date
+            AND input_sid = sid
+    );
+
+    IF (num_registration <> 0 OR num_redemption <> 0) THEN
         RAISE EXCEPTION 'There are existing registrations for this session!';
     END IF;
 
