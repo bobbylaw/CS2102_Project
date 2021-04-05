@@ -259,7 +259,7 @@ $$ LANGUAGE plpgsql;
 	- get the course_area related to this instructor
 	- INSERT session into Session table
 */
-CREATE OR REPLACE PROCEDURE add_course_offerings (course_id INTEGER, course_fees NUMERIC(12,2), launch_date DATE, registration_deadline DATE, target_number_of_registration INTEGER, administrator_id INTEGER, session_info SESSION_INFORMATION[])
+CREATE OR REPLACE PROCEDURE add_course_offerings (_course_id INTEGER, course_fees NUMERIC(12,2), launch_date DATE, registration_deadline DATE, target_number_of_registration INTEGER, administrator_id INTEGER, session_info SESSION_INFORMATION[])
 AS $$
 DECLARE
 	available_instructor_id INTEGER;
@@ -300,14 +300,14 @@ BEGIN
 		END IF;
 	END LOOP;
 	
-	INSERT INTO Offerings (course_id, launch_date, start_date, eid, end_date, registration_deadline, target_num_of_registrations, seating_capacity, fees) VALUES (course_id, launch_date, first_session_date, administrator_id, last_session_date, registration_deadline, target_number_of_registration, total_seating_capacity, course_fees);
+	INSERT INTO Offerings (course_id, launch_date, start_date, eid, end_date, registration_deadline, target_number_registrations, seating_capacity, fees) VALUES (_course_id, launch_date, first_session_date, administrator_id, last_session_date, registration_deadline, target_number_of_registration, total_seating_capacity, course_fees);
 	
 	FOREACH sessions in ARRAY session_info LOOP
-		session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = course_id) * INTERVAL '1 hour';
-		instructor_available := (SELECT eid FROM find_instructors(course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1);
+		session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = _course_id) * INTERVAL '1 hour';
+		instructor_available := (SELECT eid FROM find_instructors(_course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1);
 		course_area_of_instructor := (SELECT course_area FROM Instructors WHERE eid = instructor_available);
 		INSERT INTO Sessions(course_id, launch_date, course_area, rid, eid, session_date, start_time, end_time)
-		VALUES (course_id, launch_date, course_area_of_instructor, (sessions).rid, instructor_available, (sessions).session_date, (sessions).session_start_time, session_end_time);
+		VALUES (_course_id, launch_date, course_area_of_instructor, (sessions).rid, instructor_available, (sessions).session_date, (sessions).session_start_time, session_end_time);
 	END LOOP;
 END;
 $$ LANGUAGE plpgsql;
