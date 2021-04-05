@@ -9,7 +9,7 @@ DECLARE
             SELECT eid FROM Instructors
                 WHERE Instructors.course_area = (SELECT name FROM Courses WHERE Courses.course_id = NEW.course_id1)
         )
-        AND NEW.session_date1 BETWEEN Employees.join_date AND Employees.depart_date
+        AND Employees.depart_date IS NOT NULL -- Meaning the employees is still in the company.
     );
     r RECORD;
     is_avail INTEGER;
@@ -22,9 +22,9 @@ BEGIN
 
         SELECT 0 INTO is_avail FROM Sessions -- Instructor already has a session clashing with the start_time
         WHERE r.eid = Sessions.eid 
-        AND NEW.start_time BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Session.end_time + INTERVAL '1 hour')
-        AND New.session_date1 = Sessions.session_date
-        AND NEW.course_id1 = Session.course_id1 -- This might be redundant but no harm putting. Safer.
+        AND start_time1 BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Session.end_time + INTERVAL '1 hour')
+        AND session_date1 = Sessions.session_date
+        AND course_id1 = Session.course_id1 -- This might be redundant but no harm putting. Safer.
         LIMIT 1; -- In case multiple entry then f up the query.
 
         IF is_avail = 1 THEN
@@ -153,6 +153,7 @@ The inputs to the routine include the following: customer identifier, and course
 If the cancellation request is valid, the routine will process the request with the necessary updates.
 */
 
+-- change customer_id to email.
 CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER)
 -- course offering identifier is not enough, we need course session also because customer requests to cancel a REGISTERED COURSE SESSION. <- write in report
 AS $$
@@ -194,10 +195,10 @@ BEGIN
     IF (is_redeem = 1) THEN
         INSERT INTO Cancels
         VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1);  --Current_date is a "static method"
+        -- Should i update number of remaining redemption is buys? YES I SHOULD
     ELSIF (is_register = 1) THEN
         INSERT INTO Cancels
         VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
-        -- Should i update number of remaining redemption is buys?
     ELSE
         RAISE EXCEPTION 'Something went wrong. No insertion is done.';
     END IF;
@@ -214,21 +215,22 @@ CREATE OR REPLACE PROCEDURE update_instructor(IN course_identifier INTEGER, IN o
 AS $$
 DECLARE
     course_session_start_time TIME;
+    course_session_date DATE;
 BEGIN
-    SELECT start_time INTO course_session_start_time
+    SELECT start_time INTO course_session_start_time, session_date INTO course_session_date
     FROM Sessions
-    WHERE Sessions.course_id = NEW.course_identifier
-    AND Sessions.launch_date = NEW.offering_launch_date
-    AND Sessions.sid = NEW.session_id;
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
 
-    IF (CURRENT_TIME > course_session_start_time) THEN
+    IF (CURRENT_TIME < course_session_start_time) AND (CURRENT_DATE <= course_session_date) THEN
         UPDATE Sessions
-        SET eid = NEW.new_eid
-        WHERE Sessions.course_id = NEW.course_identifier
-        AND Sessions.launch_date = NEW.offering_launch_date
-        AND Sessions.sid = NEW.session_id;
+        SET eid = new_eid
+        WHERE Sessions.course_id = course_identifier
+        AND Sessions.launch_date = offering_launch_date
+        AND Sessions.sid = session_id;
     ELSE
-        RAISE EXCEPTION 'The course session has probably started';
+        RAISE EXCEPTION 'The course session has started';
     END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -246,28 +248,29 @@ DECLARE
     course_session_start_time TIME;
     course_seating_capacity INTEGER;
     new_room_seating_capacity INTEGER;
+    course_session_date DATE;
 BEGIN
-    SELECT start_time INTO course_session_start_time
+    SELECT start_time INTO course_session_start_time, session_date INTO course_session_date
     FROM Sessions
-    WHERE Sessions.course_id = NEW.course_identifier
-    AND Sessions.launch_date = NEW.offering_launch_date
-    AND Sessions.sid = NEW.session_id;
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
 
     SELECT seating_capacity INTO course_seating_capacity
     FROM Offerings
-    WHERE Offerings.course_id = NEW.course_identifier
-    AND Offerings.launch_date = NEW.offering_launch_date;
+    WHERE Offerings.course_id = course_identifier
+    AND Offerings.launch_date = offering_launch_date;
 
     SELECT seating_capacity INTO new_room_seating_capacity
     FROM Rooms
-    WHERE Rooms.rid = NEW.new_rid;
+    WHERE Rooms.rid = new_rid;
 
-    IF (CURRENT_TIME > course_session_start_time) AND (new_room_seating_capacity > course_seating_capacity) THEN
+    IF (CURRENT_TIME < course_session_start_time) AND (new_room_seating_capacity >= course_seating_capacity) THEN
         UPDATE Sessions
-        SET rid = NEW.new_rid
-        WHERE Sessions.course_id = NEW.course_identifier
-        AND Sessions.launch_date = NEW.offering_launch_date
-        AND Sessions.sid = NEW.session_id;
+        SET rid = new_rid
+        WHERE Sessions.course_id = course_identifier
+        AND Sessions.launch_date = offering_launch_date
+        AND Sessions.sid = session_id;
     ELSE
         RAISE EXCEPTION 'The course probably has started or the new room doesnt have enough seating capacity';
     END IF;  
