@@ -149,7 +149,7 @@ FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_part_time_emp();
 /*Explanation
 1. Check whether input is valid
 	- catagory must be manager, administrator or instructor
-	- course areas cannot be NULL when it is not an administrator
+	- course areas cannot be NULL when it is an instructor
 	- course areas NULL when it is an administrator
 	- salary rate is hourly when it is a manager or administrator
 	- salary rate not equals to 'monthly' or 'hourly'
@@ -160,15 +160,15 @@ AS $$
 DECLARE
 	eid INTEGER := 0;
 BEGIN
-	IF catagory != 'manager' or catagory != 'administrator' or catagory != 'instructor' THEN
+	IF catagory ISNULL or (catagory <> 'manager' and catagory <> 'administrator' and catagory <> 'instructor') THEN
 		RAISE EXCEPTION 'OPERATION FAILED: please specify the employee catagory correctly';
-	ELSIF course_areas ISNULL AND catagory <> 'administrator' THEN
-		RAISE EXCEPTION 'OPERATION FAILED: missing course_areas when employee is either instructor or manager';
+	ELSIF course_areas ISNULL AND catagory = 'instructor' THEN
+		RAISE EXCEPTION 'OPERATION FAILED: missing course_areas when employee is instructor';
 	ELSIF course_areas NOTNULL AND catagory = 'administrator' THEN
 		RAISE EXCEPTION 'OPERATION FAILED: course_areas presented when employee is administrator';
 	ELSIF (salary_information.rate) != 'hourly' AND (salary_information.rate) != 'monthly' THEN
 		RAISE EXCEPTION 'OPERATION FAILED: missing salary information';
-	ELSIF (salary_information.rate) != 'hourly' AND catagory = 'instructor' THEN
+	ELSIF (salary_information.rate) = 'hourly' AND (catagory = 'manager' or catagory = 'administrator') THEN
 		RAISE EXCEPTION 'OPERATION FAILED: Only Instructor can be part-time';
 	END IF;
 	
@@ -224,7 +224,7 @@ BEGIN
 	
 	SELECT count(*) INTO eid_handling_course_offering_count
 	FROM Offerings O
-	WHERE O.eid = employee_id;
+	WHERE O.eid = employee_id AND O.registration_date > departure_date;
 	
 	SELECT count(*) INTO eid_teaching_course_count
 	FROM Sessions S
@@ -393,7 +393,7 @@ BEGIN
 		ELSIF (r.monthly_salary).rate = 'hourly' THEN
 			status = 'part-time';
 			num_work_days := NULL;
-			num_work_hours := (SELECT SUM(AGE(end_time, start_time)) FROM Sessions S WHERE S.eid = r.eid AND S.session_date BETWEEN start_of_month AND end_of_month);
+			num_work_hours := (SELECT SUM(end_time - start_time) FROM Sessions S WHERE S.eid = r.eid AND S.session_date BETWEEN start_of_month AND end_of_month);
 			num_work_hours := COALESCE(num_work_hours, 0);
 			hourly_rate := (r.monthly_salary).salary;
 			salary_amount_paid := COALESCE((num_work_hours * (r.monthly_salary).salary),0);
