@@ -101,7 +101,7 @@ CREATE TABLE Offerings (
     end_date DATE,
     registration_deadline DATE,
     target_number_registrations INTEGER,
-    seating_capacity INTEGER,
+    seating_capacity INTEGER DEFAULT 0,
     fees NUMERIC(12,2),
     PRIMARY KEY(course_id, launch_date), -- Weak entity set to courses
     FOREIGN KEY(eid) REFERENCES Administrators,
