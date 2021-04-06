@@ -666,12 +666,12 @@ BEGIN
     END IF;
 
     counter := (
-        SELECT COALESCE(COUNT(*), 0) -- this query returns the count of credit cards insert customer owns that exist in registers table AND reg_date < deadline
-        FROM Registers as r NATURAL JOIN Sessions as s NATURAL JOIN Offerings as co
+        SELECT COALESCE(COUNT(card_number), 0) -- this query returns the count of credit cards insert customer owns that exist in registers table AND reg_date < deadline
+        FROM Registers as r NATURAL FULL JOIN Redeems as re NATURAL JOIN Sessions as s NATURAL JOIN (SELECT course_id, launch_date, registration_deadline FROM Offerings) as co
         WHERE card_number IN (SELECT DISTINCT occ.card_number -- this subquery gets all the credit cards this customer owns
                 FROM Owns_Credit_Cards as occ
                 WHERE cust_id in (SELECT DISTINCT rcc.cust_id -- this subquery fetches customers who own NEW.credit card
-                    FROM (Registers NATURAL JOIN Owns_Credit_Cards) as rcc JOIN Customers as c ON rcc.cust_id = c.cust_id
+                    FROM (Registers NATURAL FULL JOIN Redeems NATURAL JOIN Owns_Credit_Cards) as rcc JOIN Customers as c ON rcc.cust_id = c.cust_id
                     WHERE NEW.card_number = card_number))
             AND NEW.registration_date <= registration_deadline
             AND NEW.course_id = course_id
@@ -679,7 +679,7 @@ BEGIN
     );
 
     IF(counter <> 0) THEN
-        RAISE EXCEPTION 'A Customer can only register for atmost one session from an offered course!';
+        RAISE EXCEPTION 'A Customer can only register or redeems for atmost one session from an offered course!';
         RETURN NULL;
     ELSE 
         RETURN NEW;
