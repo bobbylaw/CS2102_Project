@@ -161,7 +161,7 @@ BEGIN
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
         LOOP
-            EXIT WHEN start_date_helper = end_date;
+            EXIT WHEN start_date_helper = end_date; -- ** Might want to add 1 day to end date to count the end date availability.
 
             is_unavail := 0;
 
@@ -192,7 +192,6 @@ BEGIN
                 AND Sessions.session_date = start_date_helper
                 AND (start_time_helper BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Sessions.end_time + INTERVAL '1 hour'));
 
-                RAISE NOTICE 'eid: %', r.eid;
                 IF is_unavail = 0 THEN
                     SELECT ARRAY_APPEND(available_hours_helper, start_time_helper) INTO available_hours_helper;
                 END IF;
@@ -203,7 +202,6 @@ BEGIN
         start_time_helper := '09:00:00';
     END LOOP;
     CLOSE curs;
-    RAISE EXCEPTION 'bom';
 END;
 $$ LANGUAGE plpgsql;
 /* Explanation and Implementation:
