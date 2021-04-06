@@ -88,7 +88,7 @@ CREATE TABLE Courses (
     course_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL, -- KEY AND TOTAL PARTICIPATION of In relationship
     title TEXT UNIQUE, -- UNIQUE course_title
-    duration INTEGER, -- Integer in mins? 
+    duration INTERVAL, -- Integer in mins? 
     description TEXT,
     FOREIGN KEY (name) REFERENCES Course_areas(name) -- Courses is IN relationship with course_areas
 );
