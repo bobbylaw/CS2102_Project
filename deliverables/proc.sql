@@ -767,6 +767,8 @@ CREATE OR REPLACE FUNCTION CSE_OFFERING_AVAIL()
 RETURNS TRIGGER AS $$
 DECLARE
     avail_capacity INTEGER;
+    before_add_capacity_registers INTEGER;
+    before_add_capacity_redeems INTEGER;
     before_add_capacity INTEGER;
 BEGIN
     avail_capacity := (SELECT o.seating_capacity
@@ -775,11 +777,21 @@ BEGIN
                             NEW.launch_date = launch_date);
 
     /* this works because Sessions is a weak entity set to Offerings */
-    before_add_capacity := (SELECT COUNT(*)
+    before_add_capacity_registers := (SELECT COUNT(*)
                             FROM Registers
                             WHERE NEW.course_id = course_id AND 
                             NEW.launch_date = launch_date AND 
                             NEW.sid = sid);
+
+    before_add_capacity_redeems := (
+        SELECT COUNT(*)
+        FROM Redeems
+        WHERE NEW.course_id = course_id AND 
+        NEW.launch_date = launch_date AND 
+        NEW.sid = sid
+    );
+
+    before_add_capacity := before_add_capacity_redeems + before_add_capacity_registers;
     
     IF (avail_capacity - before_add_capacity <= 0) THEN
         RAISE EXCEPTION 'Course offering is fully booked!';
