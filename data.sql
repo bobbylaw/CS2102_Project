@@ -42,17 +42,17 @@ call add_employee ('Elvira Pinckney', '3550 Pepper Wood Crossing', '(209) 576504
 call add_employee ('Cello Gregorowicz', '3945 Talmadge Park', '(122) 3027611', 'cgregorowiczu@npr.org', (18, 'hourly'), '2020-12-31', 'instructor', '{Law, Business}');
 
 -- Courses (assuming time is in hours)
-call add_course ('Programming Methodology', 'This course introduces the concepts of programming and computational problem solving, and is the first and foremost introductory course to computing.', 'Computer Science',  2);
-call add_course ('Legal Environment of Business', 'This course will equip business students with basic legal knowledge relating to commercial transactions so that they will be more aware of potential legal problems', 'Business',  4);
-call add_course ('Computer Organization', 'This course teaches students computer organization concepts and how to write efficient microprocessor programs using assembly language.', 'Computer Engineering',  3);
-call add_course ('Science of Music', 'This course aims to establish clear relationships between the basic elements of music found in virtually all musical cultures and their underlying scientific and mathematical principles.', 'Music',  1);
-call add_course ('Signals and Systems', 'This is a fundamental course in signals and systems. Signals in electrical engineering play an important role in carrying information.', 'Electrical Engineering', 3);
-call add_course ('Singapore Employment Law', 'The course introduces students to the development of industrial relations and labour laws in Singapore.', 'Law', 2);
-call add_course ('Financial Accounting', 'The course provides an introduction to financial accounting.', 'Accountancy', 2);
-call add_course ('General Biology', 'The course will introduce the chemistry of life and the unit of life.', 'Biomedical Engineering', 3);
-call add_course ('Modern Technology in Medicine and Health', 'The course provides an insight into the scientific principles underlying these new and powerful technologies.', 'Medicine', 2);
-call add_course ('Ideas and Approaches in Design', 'This course provides and introduction to some of the basic concepts in and approaches to architecture as a practice and as an academic discipline.', 'Design and Environment', 4);
-call add_course ('Chemical Engineering Principles', 'The core of the course covers the details of steady state material and energy balance, including recycle, purge, phase change and chemical reaction.', 'Chemical Engineering', 2);
+call add_course ('Programming Methodology', 'This course introduces the concepts of programming and computational problem solving, and is the first and foremost introductory course to computing.', 'Computer Science',  '2 hour');
+call add_course ('Legal Environment of Business', 'This course will equip business students with basic legal knowledge relating to commercial transactions so that they will be more aware of potential legal problems', 'Business',  '4 hour');
+call add_course ('Computer Organization', 'This course teaches students computer organization concepts and how to write efficient microprocessor programs using assembly language.', 'Computer Engineering',  '3 hour');
+call add_course ('Science of Music', 'This course aims to establish clear relationships between the basic elements of music found in virtually all musical cultures and their underlying scientific and mathematical principles.', 'Music',  '1 hour');
+call add_course ('Signals and Systems', 'This is a fundamental course in signals and systems. Signals in electrical engineering play an important role in carrying information.', 'Electrical Engineering', '3 hour');
+call add_course ('Singapore Employment Law', 'The course introduces students to the development of industrial relations and labour laws in Singapore.', 'Law', '2 hour');
+call add_course ('Financial Accounting', 'The course provides an introduction to financial accounting.', 'Accountancy', '2 hour');
+call add_course ('General Biology', 'The course will introduce the chemistry of life and the unit of life.', 'Biomedical Engineering', '3 hour');
+call add_course ('Modern Technology in Medicine and Health', 'The course provides an insight into the scientific principles underlying these new and powerful technologies.', 'Medicine', '2 hour');
+call add_course ('Ideas and Approaches in Design', 'This course provides and introduction to some of the basic concepts in and approaches to architecture as a practice and as an academic discipline.', 'Design and Environment', '4 hour');
+call add_course ('Chemical Engineering Principles', 'The core of the course covers the details of steady state material and energy balance, including recycle, purge, phase change and chemical reaction.', 'Chemical Engineering', '2 hour');
 
 -- Rooms (Keep is simple with 2 floor and 2 rooms each, all can sit 30 person)
 INSERT INTO Rooms VALUES (1, 'Floor 1 Room 1', 30);
