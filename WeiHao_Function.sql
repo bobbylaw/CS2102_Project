@@ -3,7 +3,7 @@
 -- If the registration transaction is valid, this routine will process the registration with the necessary updates (e.g., payment/redemption).
 
 -- It is given that if the payment method is redeems, it is from an active package so not need to check for inactive package.
-CREATE OR REPLACE PROCEDURE register_sessions(IN customer_id INTEGER, IN course_id INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
+CREATE OR REPLACE PROCEDURE register_sessions(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
 AS $$
 DECLARE
     curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
@@ -36,18 +36,18 @@ BEGIN
 
         IF is_redeem > 0 OR is_register > 0 THEN
             CLOSE curs;
-            RAISE EXCEPTION 'This customer has already redeem or register for this course';
+            RAISE EXCEPTION 'This customer has already redeem or register for this course offering';
         END IF;
     END LOOP;
     CLOSE curs;
-
+    
     SELECT card_number INTO customer_cc_num FROM Owns_credit_cards 
     WHERE Owns_credit_cards.cust_id = customer_id 
     LIMIT 1; -- If customer has multiple cc card then we choose the first.
 
     IF payment_method = 'credit card' THEN -- insert into register table.
-        INSERT INTO Registers VALUES (customer_cc_num, course_id, offering_launch_date, session_id, CURRENT_DATE);
-    ELSIF payment_method = 'redemption' -- insert into redeems table
+        INSERT INTO Registers VALUES (customer_cc_num, course_identifier, offering_launch_date, session_id, CURRENT_DATE);
+    ELSIF payment_method = 'redemption' THEN -- insert into redeems table
         SELECT package_id INTO redeem_package_id FROM Buys
         WHERE Buys.card_number = customer_cc_num
         AND num_of_redemption > 0;
@@ -56,7 +56,7 @@ BEGIN
         WHERE Buys.card_number = customer_cc_num
         AND num_of_redemption > 0;
 
-        INSERT INTO Redeems VALUES (customer_cc_num, redeem_package_id, package_purchase_date, course_id, offering_launch_date, session_id);
+        INSERT INTO Redeems VALUES (customer_cc_num, redeem_package_id, package_purchase_date, course_identifier, offering_launch_date, session_id, CURRENT_DATE);
 
         UPDATE Buys SET num_of_redemption = num_of_redemption - 1
         WHERE card_number = customer_cc_num
@@ -66,7 +66,9 @@ BEGIN
         RAISE EXCEPTION 'Payment method has to be stated in credit card or redemption';
     END IF;
 END;
-$$ LANUGAGE plpgsql;
+$$ LANGUAGE plpgsql;
+
+
 -- find_instructors: This routine is used to find all the instructors who could be assigned to teach a course session. 
 -- The inputs to the routine include the following: course identifier, session date, and session start hour. 
 -- The routine returns a table of records consisting of employee identifier and name.
@@ -230,10 +232,9 @@ If the cancellation request is valid, the routine will process the request with 
 -- For each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
 -- cancel 1 of the sessions.
 CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE)
--- course offering identifier is not enough, we need course session also because customer requests to cancel a REGISTERED COURSE SESSION. <- write in report
 AS $$
 DECLARE
-    curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    curs1 CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
     r RECORD;
     is_redeem INTEGER;
     is_register INTEGER;
@@ -249,9 +250,9 @@ BEGIN
     WHERE Offerings.course_id = course_identifier
     AND Offerings.launch_date = offering_launch_date;
 
-    OPEN curs;
+    OPEN curs1;
     LOOP
-        FETCH curs INTO r;
+        FETCH curs1 INTO r;
         EXIT WHEN NOT FOUND;
 
         SELECT COUNT(*) INTO is_redeem  -- Check whether custoemr redeems or purchase the session
@@ -278,8 +279,7 @@ BEGIN
 
             INSERT INTO Cancels
             VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1); 
-        -- Should i update number of remaining redemption is buys?
-        -- There is no way I can update because i do not know which package the customers redeem from!
+
         ELSIF (is_register > 0) THEN
             SELECT sid INTO session_id
             FROM Registers
@@ -291,12 +291,9 @@ BEGIN
 
             INSERT INTO Cancels
             VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
-        ELSE
-            RAISE EXCEPTION 'There is no refund because you are over 7 days.';
         END IF;
     END LOOP;
-    CLOSE curs;
-    RAISE NOTICE 'The customer did not register/redeems for this course';
+    CLOSE curs1;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -305,6 +302,17 @@ update_instructor: This routine is used to change the instructor for a course se
 The inputs to the routine include the following: course offering identifier, session number, and identifier of the new instructor. 
 If the course session has not yet started and the update request is valid, the routine will process the request with the necessary updates.
 */
+
+-- CALL cancel_registration(2, 1, DATE '2020-01-01');
+
+-- DELETE FROM Cancels;
+-- SELECT * FROM Cancels;
+
+-- SELECT * FROM Registers;
+-- SELECT * FROM redeems;
+-- SELECT * FROM buys;
+
+-- CALL register_sessions(2, 1, DATE '2020-01-01', 1, 'redemption');
 
 CREATE OR REPLACE PROCEDURE update_instructor(IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, IN new_eid INTEGER)
 AS $$
