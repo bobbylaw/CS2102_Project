@@ -278,7 +278,7 @@ DECLARE
     curr_course_id INTEGER;
     curr_course_name TEXT;
     curr_course_title TEXT;
-    curr_course_duration INTEGER;
+    curr_course_duration INTERVAL;
 
     later_launch_date DATE;
     later_start_date DATE;
