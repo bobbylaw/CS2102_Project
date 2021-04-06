@@ -211,7 +211,7 @@ AS $$
 DECLARE
     is_valid_session BOOLEAN;
     input_course_area TEXT;
-    input_course_duration INTEGER;
+    input_course_duration INTERVAL;
 BEGIN
     is_valid_session := (
         SELECT input_session_day <= o.registration_deadline
@@ -234,9 +234,9 @@ BEGIN
 
     IF (is_valid_session) THEN
         INSERT INTO Sessions(course_id, launch_date, course_area, rid, eid, sid, session_date, start_time, end_time)
-        VALUES (input_course_id, input_launch_date, input_course_area, input_rid, input_instructor_eid, input_sid, input_session_day, input_session_start_hour, input_session_start_hour + (interval '01:00' * input_course_duration));
+        VALUES (input_course_id, input_launch_date, input_course_area, input_rid, input_instructor_eid, input_sid, input_session_day, input_session_start_hour, input_session_start_hour + input_course_duration);
     ELSE
-        RAISE EXCEPTION 'Input session day is beyond registration deadline!';
+        RAISE EXCEPTION 'Invalid sessions added!';
     END IF;
 END
 $$ LANGUAGE plpgsql;
