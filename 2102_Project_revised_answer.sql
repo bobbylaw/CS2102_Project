@@ -190,12 +190,13 @@ CREATE TABLE Registers (
 );
 
 CREATE TABLE Course_packages (
-    package_id INTEGER PRIMARY KEY,
-    sales_start_date DATE,
-    sales_end_date DATE,
-    num_free_registrations INTEGER,
-    name TEXT,
+    package_id SERIAL PRIMARY KEY,
+    sales_start_date DATE NOT NULL,
+    sales_end_date DATE NOT NULL,
+    num_free_registrations INTEGER NOT NULL, 
+    name TEXT NOT NULL,
     price NUMERIC(12,2)
+    CHECK(sales_end_date - sales_start_date >= 0)-- Sales_end_date should be after sales_start_date
 );
 
 CREATE TABLE Buys (
