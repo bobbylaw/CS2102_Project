@@ -49,12 +49,12 @@ BEGIN
     END IF;
 
     counter := (
-        SELECT COALESCE(COUNT(*), 0) -- this query returns the count of credit cards insert customer owns that exist in registers table AND reg_date < deadline
-        FROM Registers as r NATURAL JOIN Sessions as s NATURAL JOIN Offerings as co
+        SELECT COALESCE(COUNT(card_number), 0) -- this query returns the count of credit cards insert customer owns that exist in registers table AND reg_date < deadline
+        FROM Registers as r NATURAL FULL JOIN Redeems as re NATURAL JOIN Sessions as s NATURAL JOIN (SELECT course_id, launch_date, registration_deadline FROM Offerings) as co
         WHERE card_number IN (SELECT DISTINCT occ.card_number -- this subquery gets all the credit cards this customer owns
                 FROM Owns_Credit_Cards as occ
                 WHERE cust_id in (SELECT DISTINCT rcc.cust_id -- this subquery fetches customers who own NEW.credit card
-                    FROM (Registers NATURAL JOIN Owns_Credit_Cards) as rcc JOIN Customers as c ON rcc.cust_id = c.cust_id
+                    FROM (Registers NATURAL FULL JOIN Redeems NATURAL JOIN Owns_Credit_Cards) as rcc JOIN Customers as c ON rcc.cust_id = c.cust_id
                     WHERE NEW.card_number = card_number))
             AND NEW.registration_date <= registration_deadline
             AND NEW.course_id = course_id
@@ -62,7 +62,7 @@ BEGIN
     );
 
     IF(counter <> 0) THEN
-        RAISE EXCEPTION 'A Customer can only register for atmost one session from an offered course!';
+        RAISE EXCEPTION 'A Customer can only register or redeems for atmost one session from an offered course!';
         RETURN NULL;
     ELSE 
         RETURN NEW;
@@ -150,6 +150,8 @@ CREATE OR REPLACE FUNCTION CSE_OFFERING_AVAIL()
 RETURNS TRIGGER AS $$
 DECLARE
     avail_capacity INTEGER;
+    before_add_capacity_registers INTEGER;
+    before_add_capacity_redeems INTEGER;
     before_add_capacity INTEGER;
 BEGIN
     avail_capacity := (SELECT o.seating_capacity
@@ -158,11 +160,21 @@ BEGIN
                             NEW.launch_date = launch_date);
 
     /* this works because Sessions is a weak entity set to Offerings */
-    before_add_capacity := (SELECT COUNT(*)
+    before_add_capacity_registers := (SELECT COUNT(*)
                             FROM Registers
                             WHERE NEW.course_id = course_id AND 
                             NEW.launch_date = launch_date AND 
                             NEW.sid = sid);
+
+    before_add_capacity_redeems := (
+        SELECT COUNT(*)
+        FROM Redeems
+        WHERE NEW.course_id = course_id AND 
+        NEW.launch_date = launch_date AND 
+        NEW.sid = sid
+    );
+
+    before_add_capacity := before_add_capacity_redeems + before_add_capacity_registers;
     
     IF (avail_capacity - before_add_capacity <= 0) THEN
         RAISE EXCEPTION 'Course offering is fully booked!';

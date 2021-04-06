@@ -88,7 +88,7 @@ CREATE TABLE Courses (
     course_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL, -- KEY AND TOTAL PARTICIPATION of In relationship
     title TEXT UNIQUE, -- UNIQUE course_title
-    duration INTERVAL, -- Integer in mins? 
+    duration INTERVAL, -- Integer in hours? 
     description TEXT,
     FOREIGN KEY (name) REFERENCES Course_areas(name) -- Courses is IN relationship with course_areas
 );
@@ -101,7 +101,7 @@ CREATE TABLE Offerings (
     end_date DATE,
     registration_deadline DATE,
     target_number_registrations INTEGER,
-    seating_capacity INTEGER,
+    seating_capacity INTEGER DEFAULT 0,
     fees NUMERIC(12,2),
     PRIMARY KEY(course_id, launch_date), -- Weak entity set to courses
     FOREIGN KEY(eid) REFERENCES Administrators,
