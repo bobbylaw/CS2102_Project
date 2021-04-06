@@ -1,33 +1,105 @@
+-- register_session: This routine is used when a customer requests to register for a session in a course offering. 
+-- The inputs to the routine include the following: customer identifier, course offering identifier, session number, and payment method (credit card or redemption from active package).
+-- If the registration transaction is valid, this routine will process the registration with the necessary updates (e.g., payment/redemption).
+
+-- It is given that if the payment method is redeems, it is from an active package so not need to check for inactive package.
+CREATE OR REPLACE PROCEDURE register_sessions(IN customer_id INTEGER, IN course_id INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
+AS $$
+DECLARE
+    curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    r RECORD;
+    is_redeem INTEGER;
+    is_register INTEGER;
+    customer_cc_num TEXT;
+    redeem_package_id INTEGER;
+    package_purchase_date DATE;
+BEGIN
+    is_redeem := 0;
+    is_register := 0;
+
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+
+        SELECT COUNT(*) INTO is_redeem  -- Check whether custoemr redeems or purchase the session
+        FROM Redeems
+        WHERE Redeems.course_id = course_identifier 
+        AND Redeems.launch_date = offering_launch_date 
+        AND Redeems.card_number = r.card_number;
+
+        SELECT COUNT(*) INTO is_register
+        FROM Registers
+        WHERE Registers.course_id = course_identifier
+        AND Registers.launch_date = offering_launch_date
+        AND Registers.card_number = r.card_number;
+
+        IF is_redeem > 0 OR is_register > 0 THEN
+            CLOSE curs;
+            RAISE EXCEPTION 'This customer has already redeem or register for this course';
+        END IF;
+    END LOOP;
+    CLOSE curs;
+
+    SELECT card_number INTO customer_cc_num FROM Owns_credit_cards 
+    WHERE Owns_credit_cards.cust_id = customer_id 
+    LIMIT 1; -- If customer has multiple cc card then we choose the first.
+
+    IF payment_method = 'credit card' THEN -- insert into register table.
+        INSERT INTO Registers VALUES (customer_cc_num, course_id, offering_launch_date, session_id, CURRENT_DATE);
+    ELSIF payment_method = 'redemption' -- insert into redeems table
+        SELECT package_id INTO redeem_package_id FROM Buys
+        WHERE Buys.card_number = customer_cc_num
+        AND num_of_redemption > 0;
+
+        SELECT purchase_date INTO package_purchase_date FROM Buys
+        WHERE Buys.card_number = customer_cc_num
+        AND num_of_redemption > 0;
+
+        INSERT INTO Redeems VALUES (customer_cc_num, redeem_package_id, package_purchase_date, course_id, offering_launch_date, session_id);
+
+        UPDATE Buys SET num_of_redemption = num_of_redemption - 1
+        WHERE card_number = customer_cc_num
+        AND package_id = redeem_package_id
+        AND purchase_date = package_purchase_date;
+    ELSE
+        RAISE EXCEPTION 'Payment method has to be stated in credit card or redemption';
+    END IF;
+END;
+$$ LANUGAGE plpgsql;
 -- find_instructors: This routine is used to find all the instructors who could be assigned to teach a course session. 
 -- The inputs to the routine include the following: course identifier, session date, and session start hour. 
 -- The routine returns a table of records consisting of employee identifier and name.
 CREATE OR REPLACE FUNCTION find_instructors(IN course_id1 INTEGER, IN session_date1 DATE, IN start_time1 TIME) -- Is it suppose to be start_time or launch_date because launch date is the PK
 RETURNS TABLE(eid INT, name TEXT) AS $$
 DECLARE
-    curs CURSOR FOR (SELECT eid, name FROM Employees -- Instructors can teach course_id1 and avaliable on session_date1
+    curs CURSOR FOR (SELECT Employees.eid, Employees.name FROM Employees -- Instructors can teach course_id1 and avaliable on session_date1
         WHERE Employees.eid IN (
-            SELECT eid FROM Instructors
-                WHERE Instructors.course_area = (SELECT name FROM Courses WHERE Courses.course_id = NEW.course_id1)
+            SELECT Instructors.eid FROM Instructors
+                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.course_id = course_id1)
         )
-        AND Employees.depart_date IS NOT NULL -- Meaning the employees is still in the company.
+        AND Employees.depart_date IS NULL -- Meaning the employees is still in the company.
     );
     r RECORD;
-    is_avail INTEGER;
+    is_unavail INTEGER;
+    course_duration INTERVAL;
 BEGIN
+    SELECT duration INTO course_duration
+    FROM Courses
+    WHERE Courses.course_id = course_id1;
+
     OPEN curs;
     LOOP
-        is_avail := 1;
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
-
-        SELECT 0 INTO is_avail FROM Sessions -- Instructor already has a session clashing with the start_time
+        
+        SELECT COUNT(*) INTO is_unavail FROM Sessions -- Instructor already has a session clashing with the start_time
         WHERE r.eid = Sessions.eid 
-        AND start_time1 BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Session.end_time + INTERVAL '1 hour')
+        AND (start_time1, start_time1 + course_duration) OVERLAPS ((Sessions.start_time - INTERVAL '1 hour'), (Sessions.end_time + INTERVAL '1 hour'))
         AND session_date1 = Sessions.session_date
-        AND course_id1 = Session.course_id1 -- This might be redundant but no harm putting. Safer.
-        LIMIT 1; -- In case multiple entry then f up the query.
+        AND course_id1 = Sessions.course_id; -- This might be redundant but no harm putting. Safer.
 
-        IF is_avail = 1 THEN
+        IF is_unavail = 0 THEN
             eid := r.eid;
             name := r.name;
             RETURN NEXT;
@@ -153,15 +225,20 @@ The inputs to the routine include the following: customer identifier, and course
 If the cancellation request is valid, the routine will process the request with the necessary updates.
 */
 
--- change customer_id to email.
-CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER)
+-- change customer_id to email. => I can't because cancels need this customer ID
+-- A customer can ONLY have 1 register/redeems for each COURSE OFFERING.
+-- For each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
+-- cancel 1 of the sessions.
+CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE)
 -- course offering identifier is not enough, we need course session also because customer requests to cancel a REGISTERED COURSE SESSION. <- write in report
 AS $$
 DECLARE
+    curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    r RECORD;
     is_redeem INTEGER;
     is_register INTEGER;
-    customer_cc_num TEXT;
     course_offering_price NUMERIC(12,2);
+    session_id INTEGER;
 BEGIN
     is_redeem := 0;
     is_register := 0;
@@ -172,36 +249,54 @@ BEGIN
     WHERE Offerings.course_id = course_identifier
     AND Offerings.launch_date = offering_launch_date;
 
-    SELECT card_number INTO customer_cc_num  -- Get the cc num of the customer
-    FROM Owns_credit_cards
-    WHERE Owns_credit_card.cust_id = customer_id;
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
 
-    SELECT 1 INTO is_redeem  -- Check whether custoemr redeems or purchase the session
-    FROM Redeems
-    WHERE Redeems.course_id = course_identifier 
-    AND Redeems.launch_date = offering_launch_date 
-    AND Redeems.sid = session_id -- Should I add sid? Or should i just deal with course_id and launch date which is PK of offerings.
-    AND Redeems.card_number = customer_cc_num
-    AND CURRENT_DATE - Redeems.purchase_date <= 7;
+        SELECT COUNT(*) INTO is_redeem  -- Check whether custoemr redeems or purchase the session
+        FROM Redeems
+        WHERE Redeems.course_id = course_identifier 
+        AND Redeems.launch_date = offering_launch_date 
+        AND Redeems.card_number = r.card_number
+        AND CURRENT_DATE - Redeems.purchase_date <= 7;
 
-    SELECT 1 INTO is_register
-    FROM Registers
-    WHERE Registers.course_id = course_identifier
-    AND Registers.launch_date = offering_launch_date
-    AND Registers.sid = session_id
-    AND Registers.card_number = customer_cc_num
-    AND CURRENT_DATE - Registers.registration_date <= 7;
+        SELECT COUNT(*) INTO is_register
+        FROM Registers
+        WHERE Registers.course_id = course_identifier
+        AND Registers.launch_date = offering_launch_date
+        AND Registers.card_number = r.card_number
+        AND CURRENT_DATE - Registers.registration_date <= 7;
 
-    IF (is_redeem = 1) THEN
-        INSERT INTO Cancels
-        VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1);  --Current_date is a "static method"
-        -- Should i update number of remaining redemption is buys? YES I SHOULD
-    ELSIF (is_register = 1) THEN
-        INSERT INTO Cancels
-        VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
-    ELSE
-        RAISE EXCEPTION 'Something went wrong. No insertion is done.';
-    END IF;
+        IF (is_redeem > 0) THEN
+            SELECT sid INTO session_id FROM Redeems
+            WHERE Redeems.course_id = course_identifier 
+            AND Redeems.launch_date = offering_launch_date 
+            AND Redeems.card_number = r.card_number
+            AND CURRENT_DATE - Redeems.purchase_date <= 7
+            LIMIT 1; -- There is suppose to be only 1 entry but just to be safe.
+
+            INSERT INTO Cancels
+            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1); 
+        -- Should i update number of remaining redemption is buys?
+        -- There is no way I can update because i do not know which package the customers redeem from!
+        ELSIF (is_register > 0) THEN
+            SELECT sid INTO session_id
+            FROM Registers
+            WHERE Registers.course_id = course_identifier
+            AND Registers.launch_date = offering_launch_date
+            AND Registers.card_number = r.card_number
+            AND CURRENT_DATE - Registers.registration_date <= 7
+            LIMIT 1; -- There is suppose to be only 1 entry but just to be safe.
+
+            INSERT INTO Cancels
+            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
+        ELSE
+            RAISE EXCEPTION 'There is no refund because you are over 7 days.';
+        END IF;
+    END LOOP;
+    CLOSE curs;
+    RAISE NOTICE 'The customer did not register/redeems for this course';
 END;
 $$ LANGUAGE plpgsql;
 
@@ -217,12 +312,18 @@ DECLARE
     course_session_start_time TIME;
     course_session_date DATE;
 BEGIN
-    SELECT start_time INTO course_session_start_time, session_date INTO course_session_date
+    SELECT start_time INTO course_session_start_time
     FROM Sessions
     WHERE Sessions.course_id = course_identifier
     AND Sessions.launch_date = offering_launch_date
     AND Sessions.sid = session_id;
-
+	
+	SELECT session_date INTO course_session_date
+    FROM Sessions
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
+	
     IF (CURRENT_TIME < course_session_start_time) AND (CURRENT_DATE <= course_session_date) THEN
         UPDATE Sessions
         SET eid = new_eid
@@ -235,6 +336,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 /*
 update_room: This routine is used to change the room for a course session.
 The inputs to the routine include the following: course offering identifier, session number, and identifier of the new room.
@@ -246,33 +348,41 @@ CREATE OR REPLACE PROCEDURE update_room(IN course_identifier INTEGER, IN offerin
 AS $$
 DECLARE
     course_session_start_time TIME;
-    course_seating_capacity INTEGER;
-    new_room_seating_capacity INTEGER;
     course_session_date DATE;
+    new_room_seating_capacity INTEGER;
+    num_of_registration INTEGER;
 BEGIN
-    SELECT start_time INTO course_session_start_time, session_date INTO course_session_date
+    SELECT start_time INTO course_session_start_time
     FROM Sessions
     WHERE Sessions.course_id = course_identifier
     AND Sessions.launch_date = offering_launch_date
     AND Sessions.sid = session_id;
 
-    SELECT seating_capacity INTO course_seating_capacity
-    FROM Offerings
-    WHERE Offerings.course_id = course_identifier
-    AND Offerings.launch_date = offering_launch_date;
+    SELECT session_date INTO course_session_date
+    FROM Sessions
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
 
     SELECT seating_capacity INTO new_room_seating_capacity
     FROM Rooms
     WHERE Rooms.rid = new_rid;
 
-    IF (CURRENT_TIME < course_session_start_time) AND (new_room_seating_capacity >= course_seating_capacity) THEN
-        UPDATE Sessions
-        SET rid = new_rid
-        WHERE Sessions.course_id = course_identifier
-        AND Sessions.launch_date = offering_launch_date
-        AND Sessions.sid = session_id;
+    SELECT COUNT(*) INTO num_of_registration
+    FROM Registers
+    WHERE Registers.course_id = course_identifier
+    AND Registers.launch_date = offering_launch_date
+    AND Registers.sid = session_id;
+
+    IF (CURRENT_DATE <= course_session_date) AND (CURRENT_TIME < course_session_start_time)
+        AND (num_of_registration > new_room_seating_capacity) THEN
+            UPDATE Sessions
+            SET rid = new_rid
+            WHERE Sessions.course_id = course_identifier
+            AND Sessions.launch_date = offering_launch_date
+            AND Sessions.sid = session_id;
     ELSE
         RAISE EXCEPTION 'The course probably has started or the new room doesnt have enough seating capacity';
-    END IF;  
+    END IF;
 END;
 $$ LANGUAGE plpgsql
