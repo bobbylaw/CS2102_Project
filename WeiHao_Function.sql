@@ -133,39 +133,40 @@ and an array of the available hours for the instructor on the specified day. The
 and the array entries are sorted in ascending order of hour
 */
 
-CREATE OR REPLACE FUNCTION get_available_instructors(IN course_id INTEGER, IN start_date DATE, IN end_date DATE)
+CREATE OR REPLACE FUNCTION get_available_instructors(IN course_identifier INTEGER, IN start_date DATE, IN end_date DATE)
 RETURNS TABLE(eid INTEGER, total_teaching_hours INTERVAL, month INTEGER, day INTEGER, available_hours TIME[]) AS $$ -- Or use [] for array?
 DECLARE
-    curs CURSOR FOR (SELECT eid, name FROM Employees
+    curs CURSOR FOR (SELECT Employees.eid, Employees.name FROM Employees
         WHERE Employees.eid IN (
-            SELECT eid FROM Instructors
-                WHERE Instructors.course_area = (SELECT name FROM Courses WHERE Courses.course_id = NEW.course_id1)
+            SELECT Instructors.eid FROM Instructors
+                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.course_id = course_identifier)
         )
         ORDER BY eid ASC
     );
     r RECORD;
     start_date_helper DATE;
     start_time_helper TIME;
-    is_avail INTEGER;
-    total_teaching_hours_helper INTEGER;
-    available_hours_helper TIME[] DEFAULT '{}'; -- Stackoverflow xD
+    is_unavail INTEGER;
+    total_teaching_hours_helper INTERVAL;
+    available_hours_helper TIME[];
 BEGIN
-    start_date_helper := NEW.start_date;
+    start_date_helper := start_date;
     start_time_helper := '09:00:00';
-    is_avail := 1;
-    total_teaching_hours_helper := '0 hour';
+    is_unavail := 0;
+    total_teaching_hours_helper := INTERVAL '0 hour';
+    available_hours_helper := '{}';
 
     OPEN curs;
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
         LOOP
-            EXIT WHEN start_date_helper = NEW.end_date;
+            EXIT WHEN start_date_helper = end_date;
 
-            is_avail := 1;
+            is_unavail := 0;
 
             SELECT SUM(end_time - start_time) INTO total_teaching_hours_helper FROM Sessions
-            WHERE Sessions.course_id = NEW.course_id
+            WHERE Sessions.course_id = course_identifier
             AND Sessions.eid = r.eid
             AND EXTRACT(Month FROM start_date_helper) = EXTRACT(Month FROM Sessions.session_date);
 
@@ -180,27 +181,29 @@ BEGIN
                 END IF;
                 start_time_helper := '09:00:00'; -- Earliest lesson at 9
                 start_date_helper := start_date_helper + INTERVAL '1 day'; -- Next day
+                RAISE NOTICE '%', available_hours_helper;
+                available_hours_helper := '{}';
             ELSIF start_time_helper = '12:00:00' THEN
                 start_time_helper := '14:00:00';
             ELSE
-                SELECT 0 INTO is_avail FROM Sessions 
-                WHERE Sessions.course_id = NEW.course_id
-                AND Session.eid = r.eid
+                SELECT COUNT(*) INTO is_unavail FROM Sessions 
+                WHERE Sessions.course_id = course_identifier
+                AND Sessions.eid = r.eid
                 AND Sessions.session_date = start_date_helper
-                AND (start_time_helper BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Sessions.end_time + INTERVAL '1 hour'))
-                LIMIT 1; -- In case of multiple entry.
+                AND (start_time_helper BETWEEN (Sessions.start_time - INTERVAL '1 hour') AND (Sessions.end_time + INTERVAL '1 hour'));
 
-                IF is_avail = 1 THEN
-                    SELECT ARRAY_APPEND(available_hours, start_time_helper) INTO available_hours;
+                RAISE NOTICE 'eid: %', r.eid;
+                IF is_unavail = 0 THEN
+                    SELECT ARRAY_APPEND(available_hours_helper, start_time_helper) INTO available_hours_helper;
                 END IF;
                 start_time_helper := start_time_helper + INTERVAL '1 hour';
             END IF;
         END LOOP;
-        start_date_helper := NEW.start_date;
+        start_date_helper := start_date;
         start_time_helper := '09:00:00';
     END LOOP;
     CLOSE curs;
-
+    RAISE EXCEPTION 'bom';
 END;
 $$ LANGUAGE plpgsql;
 /* Explanation and Implementation:
