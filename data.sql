@@ -72,3 +72,16 @@ call add_course_offerings(8, 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(202
 call add_course_offerings(9, 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
 call add_course_offerings(10, 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
 
+-- Customers
+CALL add_customer('Suzy Standrin', '61 Oriole Crossing', '(513) 9443136', 'sstandrin0@i2i.jp', '4041374696425943', '2023-01-15', 911);
+CALL add_customer('Farrand Agastina', '644 Independence Plaza', '(754) 2932401', 'fagastina1@guardian.co.uk', '4017950493001035', '2022-12-03', 911);
+CALL add_customer('Martynne Dabbs', '9 Moose Crossing', '(408) 3827563', 'mdabbs2@wp.com', '4041374159205451', '2023-03-23', 234);
+CALL add_customer('Ingrim Ottewell', '6 Mccormick Avenue', '(949) 5334791', 'iottewell3@moonfruit.com', '4041372734814', '2023-03-10', 811);
+CALL add_customer('Antonietta Truscott', '7 6th Circle', '(253) 6618273', 'atruscott4@forbes.com', '4041373626338879', '2022-06-04', 884);
+CALL add_customer('Allix Chapman', '430 Division Alley', '(559) 1892244', 'achapman5@yelp.com', '4017950608566187', '2023-02-07', 495);
+CALL add_customer('Mada Sooper', '97 Esker Plaza', '(948) 3590358', 'msooper6@smugmug.com', '4017951761396594', '2022-08-12', 477);
+CALL add_customer('Darby Riddington', '9674 Arizona Way', '(986) 8008194', 'driddington7@spotify.com', '4041379536444', '2022-09-19', 172);
+CALL add_customer('Flory Alwell', '07 Ridge Oak Way', '(174) 1033142', 'falwell8@dell.com', '4017950159210', '2023-03-13', 213);
+CALL add_customer('Ax de Mendoza', '4421 Melvin Avenue', '(538) 9763902', 'ade9@cyberchimps.com', '4017952580157', '2022-11-15', 976);
+
+
