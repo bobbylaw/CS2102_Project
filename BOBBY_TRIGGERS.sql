@@ -326,7 +326,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_available_course_offerings()
 RETURNS TABLE(course_title TEXT, course_area TEXT, start_date DATE, end_date DATE, registration_deadline DATE,course_fees NUMERIC(12,2),num_of_remaining_seats INTEGER) AS $$
 DECLARE
-	curs CURSOR FOR (SELECT * FROM Offerings O join Courses C on O.course_id = C.course_id ORDER BY registration_deadline, title ASC);
+	curs CURSOR FOR (SELECT * FROM Offerings O join Courses C on O.course_id = C.course_id ORDER BY registration_deadline, title ASC WHERE registration_deadline - CURRENT_DATE > 0);
 	count_register INTEGER;
 	count_redeem INTEGER;
 	r RECORD;
@@ -351,7 +351,9 @@ BEGIN
 		WHERE T.course_id = r.course_id and T.launch_date = r.launch_date;
 			  
 		num_of_remaining_seats := r.target_number_registrations - count_register - count_redeem;
-		RETURN NEXT;
+		IF num_of_remaining_seats > 0 THEN
+			RETURN NEXT;
+		END IF;
 	END LOOP;
 	CLOSE curs;
 END;
