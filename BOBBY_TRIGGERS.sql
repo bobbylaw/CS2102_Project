@@ -150,7 +150,7 @@ FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_part_time_emp();
 1. Check whether input is valid
 	- catagory must be manager, administrator or instructor
 	- course areas cannot be NULL when it is an instructor
-	- course areas NULL when it is an administrator
+	- course areas not NULL when it is an administrator
 	- salary rate is hourly when it is a manager or administrator
 	- salary rate not equals to 'monthly' or 'hourly'
 2. Insert into Employee first followed by inserting into respectively tables based on catagory and rate
@@ -291,12 +291,18 @@ BEGIN
 	END IF;
 	
 	FOREACH sessions in ARRAY session_info LOOP
+		session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = _course_id);
 		IF EXTRACT(isodow FROM (sessions).session_date) not in (1,2,3,4,5) THEN
 			RAISE EXCEPTION 'OPERATION FAILED: Session must be from Monday to Friday';
 		ELSIF (EXTRACT(hours FROM (sessions).session_start_time) < 9 OR EXTRACT(hours FROM session_end_time) > 12) AND (EXTRACT(hours FROM (sessions).session_start_time) < 14 OR EXTRACT(hours FROM session_end_time) > 18) THEN
 			RAISE EXCEPTION 'OPERATION FAILED: Session time must be from 9am to 12pm or 2pm to 6pm';
 		ELSIF (EXTRACT(hours FROM session_end_time)) <= (EXTRACT(hours FROM (sessions).session_start_time)) THEN
 			RAISE EXCEPTION 'OPERATION FAILED: Session start time must be before end time';
+		END IF;
+		
+		instructor_available := (SELECT eid FROM find_instructors(_course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1); -- check if there is at least 1 instructor available
+		IF instructor_available ISNULL THEN
+			RAISE EXCEPTION 'OPERATION FAILED: Unable to find instructor for Session date % of Course ID: % launching on  %', (sessions).session_date, _course_id, launch_date;
 		END IF;
 	END LOOP;
 	
@@ -305,9 +311,9 @@ BEGIN
 	FOREACH sessions in ARRAY session_info LOOP
 		session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = _course_id);
 		instructor_available := (SELECT eid FROM find_instructors(_course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1);
-		course_area_of_instructor := (SELECT course_area FROM Instructors WHERE eid = instructor_available);
+		course_area_of_instructor := (SELECT name FROM Courses C WHERE C.course_id = _course_id);
 		INSERT INTO Sessions(course_id, launch_date, course_area, rid, eid, session_date, start_time, end_time)
-		VALUES (_course_id, launch_date, course_area_of_instructor, (sessions).rid, instructor_available, (sessions).session_date, (sessions).session_start_time, session_end_time);
+		VALUES (_course_id, launch_date, course_area_of_instructor, (sessions).room_id, instructor_available, (sessions).session_date, (sessions).session_start_time, session_end_time);
 	END LOOP;
 END;
 $$ LANGUAGE plpgsql;
@@ -378,22 +384,22 @@ BEGIN
 		employee_id := r.eid;
 		employee_name := r.name;
 		IF (r.monthly_salary).rate = 'monthly' THEN
-			status = 'full-time';
+			status := 'full-time';
 			num_work_hours := NULL;
 			hourly_rate := NULL;
 			monthly_salary := (r.monthly_salary).salary;
-			IF r.join_date BETWEEN start_of_month AND CURRENT_DATE THEN
+			IF r.join_date BETWEEN start_of_month AND end_of_month THEN
 				start_of_month := r.join_date;
-			ELSIF r.depart_date BETWEEN start_of_month AND CURRENT_DATE THEN
+			ELSIF r.depart_date BETWEEN start_of_month AND end_of_month THEN
 				end_of_month := r.depart_date;
 			END IF;
 			work_days := (SELECT count(*) FROM generate_series(start_of_month, end_of_month, interval  '1 day') the_day WHERE  extract('ISODOW' FROM the_day) < 6);
 			num_work_days := COALESCE(work_days, 0);
 			salary_amount_paid := COALESCE(ROUND(((r.monthly_salary).salary * (work_days::NUMERIC / days_in_month::NUMERIC)),2),0);
 		ELSIF (r.monthly_salary).rate = 'hourly' THEN
-			status = 'part-time';
+			status := 'part-time';
 			num_work_days := NULL;
-			num_work_hours := (SELECT SUM(end_time - start_time) FROM Sessions S WHERE S.eid = r.eid AND S.session_date BETWEEN start_of_month AND end_of_month);
+			num_work_hours := (SELECT SUM(EXTRACT('hours' FROM (end_time - start_time))) FROM Sessions S WHERE S.eid = r.eid AND S.session_date BETWEEN start_of_month AND end_of_month);
 			num_work_hours := COALESCE(num_work_hours, 0);
 			hourly_rate := (r.monthly_salary).salary;
 			salary_amount_paid := COALESCE((num_work_hours * (r.monthly_salary).salary),0);
@@ -507,9 +513,9 @@ DECLARE
 	r2 RECORD;
 	
 	total_count_from_credit_card INTEGER;
-	total_sum_from_credit_card NUMERIC = 0;
-	total_sum_from_redemption NUMERIC = 0;
-	highest_amount NUMERIC = 0;
+	total_sum_from_credit_card NUMERIC := 0;
+	total_sum_from_redemption NUMERIC := 0;
+	highest_amount NUMERIC := 0;
 	highest_course_id INTEGER[] = NULL;
 	temp_course_id INTEGER;
 	highest_total_offering TEXT[];
@@ -562,7 +568,7 @@ BEGIN
 	END LOOP;
 	CLOSE curs1;
 END;
-$$ LANGUAGE plpgsql
+$$ LANGUAGE plpgsql;
 
 -- For each course offered by the company, a customer can register for at most one of its sessions before its registration_deadline.
 CREATE OR REPLACE FUNCTION at_most_one_redeem_session_in_offerings_func()

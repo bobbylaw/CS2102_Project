@@ -42,17 +42,17 @@ call add_employee ('Elvira Pinckney', '3550 Pepper Wood Crossing', '(209) 576504
 call add_employee ('Cello Gregorowicz', '3945 Talmadge Park', '(122) 3027611', 'cgregorowiczu@npr.org', (18, 'hourly'), '2020-12-31', 'instructor', '{Law, Business}');
 
 -- Courses (assuming time is in hours)
-call add_course ('Programming Methodology', 'This course introduces the concepts of programming and computational problem solving, and is the first and foremost introductory course to computing.', 'Computer Science',  '2 hour');
-call add_course ('Legal Environment of Business', 'This course will equip business students with basic legal knowledge relating to commercial transactions so that they will be more aware of potential legal problems', 'Business',  '4 hour');
-call add_course ('Computer Organization', 'This course teaches students computer organization concepts and how to write efficient microprocessor programs using assembly language.', 'Computer Engineering',  '3 hour');
-call add_course ('Science of Music', 'This course aims to establish clear relationships between the basic elements of music found in virtually all musical cultures and their underlying scientific and mathematical principles.', 'Music',  '1 hour');
-call add_course ('Signals and Systems', 'This is a fundamental course in signals and systems. Signals in electrical engineering play an important role in carrying information.', 'Electrical Engineering', '3 hour');
-call add_course ('Singapore Employment Law', 'The course introduces students to the development of industrial relations and labour laws in Singapore.', 'Law', '2 hour');
-call add_course ('Financial Accounting', 'The course provides an introduction to financial accounting.', 'Accountancy', '2 hour');
-call add_course ('General Biology', 'The course will introduce the chemistry of life and the unit of life.', 'Biomedical Engineering', '3 hour');
-call add_course ('Modern Technology in Medicine and Health', 'The course provides an insight into the scientific principles underlying these new and powerful technologies.', 'Medicine', '2 hour');
-call add_course ('Ideas and Approaches in Design', 'This course provides and introduction to some of the basic concepts in and approaches to architecture as a practice and as an academic discipline.', 'Design and Environment', '4 hour');
-call add_course ('Chemical Engineering Principles', 'The core of the course covers the details of steady state material and energy balance, including recycle, purge, phase change and chemical reaction.', 'Chemical Engineering', '2 hour');
+call add_course ('Programming Methodology', 'This course introduces the concepts of programming and computational problem solving, and is the first and foremost introductory course to computing.', 'Computer Science',  INTERVAL '2 hour');
+call add_course ('Legal Environment of Business', 'This course will equip business students with basic legal knowledge relating to commercial transactions so that they will be more aware of potential legal problems', 'Business', INTERVAL '4 hour');
+call add_course ('Computer Organization', 'This course teaches students computer organization concepts and how to write efficient microprocessor programs using assembly language.', 'Computer Engineering', INTERVAL '3 hour');
+call add_course ('Science of Music', 'This course aims to establish clear relationships between the basic elements of music found in virtually all musical cultures and their underlying scientific and mathematical principles.', 'Music', INTERVAL '1 hour');
+call add_course ('Signals and Systems', 'This is a fundamental course in signals and systems. Signals in electrical engineering play an important role in carrying information.', 'Electrical Engineering', INTERVAL '3 hour');
+call add_course ('Singapore Employment Law', 'The course introduces students to the development of industrial relations and labour laws in Singapore.', 'Law', INTERVAL '2 hour');
+call add_course ('Financial Accounting', 'The course provides an introduction to financial accounting.', 'Accountancy', INTERVAL '2 hour');
+call add_course ('General Biology', 'The course will introduce the chemistry of life and the unit of life.', 'Biomedical Engineering', INTERVAL '2 hour');
+call add_course ('Modern Technology in Medicine and Health', 'The course provides an insight into the scientific principles underlying these new and powerful technologies.', 'Medicine', INTERVAL '2 hour');
+call add_course ('Ideas and Approaches in Design', 'This course provides and introduction to some of the basic concepts in and approaches to architecture as a practice and as an academic discipline.', 'Design and Environment', INTERVAL '4 hour');
+call add_course ('Chemical Engineering Principles', 'The core of the course covers the details of steady state material and energy balance, including recycle, purge, phase change and chemical reaction.', 'Chemical Engineering', INTERVAL '2 hour');
 
 -- Rooms (Keep is simple with 2 floor and 2 rooms each, all can sit 30 person)
 INSERT INTO Rooms VALUES (1, 'Floor 1 Room 1', 30);
@@ -61,15 +61,14 @@ INSERT INTO Rooms VALUES (3, 'Floor 2 Room 1', 30);
 INSERT INTO Rooms VALUES (4, 'Floor 2 Room 2', 30);
 
 -- Course Offerings (There is 11 courses, 10 courses is offered every month, registration is a month before it start)
--- Each offering has 1 month to register
 call add_course_offerings(1, 68.00, '2020-12-01', '2020-12-31', 70, 1,  '{"(2021-01-11, 9:00, 1)","(2021-01-13, 9:00, 1)","(2021-01-15, 9:00, 1)"}'); 
-call add_course_offerings(2, 98.00, '2020-12-01', '2020-12-31', 50, 2,  '{"(2021-01-11, 9:00, 2)","(2021-01-13, 9:00, 2)","(2021-01-15, 9:00, 2)"}');
+call add_course_offerings(2, 98.00, '2020-12-01', '2020-12-31', 50, 2,  '{"(2021-01-11, 14:00, 2)","(2021-01-13, 14:00, 2)","(2021-01-15, 14:00, 2)"}');
 call add_course_offerings(3, 68.00, '2020-12-01', '2020-12-31', 80, 3,  '{"(2021-01-11, 9:00, 3)","(2021-01-13, 9:00, 3)","(2021-01-15, 9:00, 3)"}');
-call add_course_offerings(4, 38.00, '2020-12-01', '2020-12-31', 80, 4,  '{"(2021-01-11, 2:00, 4)","(2021-01-13, 2:00, 4)","(2021-01-15, 2:00, 4)"}');
-call add_course_offerings(5, 48.00, '2020-12-01', '2020-12-31', 40, 5,  '{"(2021-01-12, 9:00, 1)","(2021-01-14, 9:00, 1)","(2021-01-18, 9:00, 1)"}');
-call add_course_offerings(6, 58.00, '2020-12-01', '2020-12-31', 60, 6,  '{"(2021-01-12, 2:00, 2)","(2021-01-14, 2:00, 2)","(2021-01-18, 2:00, 2)"}');
-call add_course_offerings(7, 58.00, '2020-12-01', '2020-12-31', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
-call add_course_offerings(8, 108.00, '2020-12-01', '2020-12-31', 50, 8,  '{"(2021-01-12, 4:00, 1)","(2021-01-14, 4:00, 1)","(2021-01-18, 4:00, 1)"}');
-call add_course_offerings(9, 88.00, '2020-12-01', '2020-12-31', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
-call add_course_offerings(10, 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 2:00, 1)","(2021-01-20, 2:00, 1)","(2021-01-21, 2:00, 1)"}');
+call add_course_offerings(4, 38.00, '2020-12-01', '2020-12-28', 80, 4,  '{"(2021-01-11, 14:00, 4)","(2021-01-13, 14:00, 4)","(2021-01-15, 14:00, 4)"}');
+call add_course_offerings(5, 48.00, '2020-12-01', '2020-12-28', 40, 5,  '{"(2021-01-12, 9:00, 1)","(2021-01-14, 9:00, 1)","(2021-01-18, 9:00, 1)"}');
+call add_course_offerings(6, 58.00, '2020-12-01', '2020-12-28', 60, 6,  '{"(2021-01-12, 14:00, 2)","(2021-01-14, 14:00, 2)","(2021-01-18, 14:00, 2)"}');
+call add_course_offerings(7, 58.00, '2020-12-01', '2020-12-27', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
+call add_course_offerings(8, 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(2021-01-12, 16:00, 1)","(2021-01-14, 16:00, 1)","(2021-01-18, 16:00, 1)"}');
+call add_course_offerings(9, 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
+call add_course_offerings(10, 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
 
