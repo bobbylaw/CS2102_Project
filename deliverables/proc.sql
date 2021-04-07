@@ -184,6 +184,44 @@ The inputs to the routine include the following: course identifier, session date
 The routine returns a table of records consisting of employee identifier and name.
 */
 
+CREATE OR REPLACE FUNCTION find_instructors(IN course_id1 INTEGER, IN session_date1 DATE, IN start_time1 TIME)
+RETURNS TABLE(eid INT, name TEXT) AS $$
+DECLARE
+    curs CURSOR FOR (SELECT Employees.eid, Employees.name FROM Employees -- Instructors can teach course_id1 and avaliable on session_date1
+        WHERE Employees.eid IN (
+            SELECT Instructors.eid FROM Instructors
+                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.course_id = course_id1)
+        )
+        AND Employees.depart_date IS NULL -- Meaning the employees is still in the company.
+    );
+    r RECORD;
+    is_unavail INTEGER;
+    course_duration INTERVAL;
+BEGIN
+    SELECT duration INTO course_duration
+    FROM Courses
+    WHERE Courses.course_id = course_id1;
+
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        
+        SELECT COUNT(*) INTO is_unavail FROM Sessions -- Instructor already has a session clashing with the start_time
+        WHERE r.eid = Sessions.eid 
+        AND (start_time1, start_time1 + course_duration) OVERLAPS ((Sessions.start_time - INTERVAL '1 hour'), (Sessions.end_time + INTERVAL '1 hour'))
+        AND session_date1 = Sessions.session_date;
+
+        IF is_unavail = 0 THEN
+            eid := r.eid;
+            name := r.name;
+            RETURN NEXT;
+        END IF;
+    END LOOP;
+    CLOSE curs;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 7.get_available_instructors: 
 /*
 This routine is used to retrieve the availability information of instructors who could be assigned to teach a specified course. 
@@ -193,6 +231,90 @@ The routine returns a table of records consisting of the following information:
     day (which is within the input date range [start date, end date]), and an array of the available hours for the instructor on the specified day. 
 The output is sorted in ascending order of employee identifier and day, and the array entries are sorted in ascending order of hour.
 */
+
+/*
+Things to note: The array of the available hours for the instructor is the hour that the instructor is able to teach the session.
+So 12pm and 6pm is automatically not in the array.
+
+Eg. The course duration is 2 hours and the instructor has that course session from 4pm-6pm. It available hours are 9am and 10am.
+11 am is invalid because 11am-1pm is invalid. 2pm is invalid because 2pm-4pm clashes with 3pm-6pm. (include rest time)
+*/
+CREATE OR REPLACE FUNCTION get_available_instructors(IN course_identifier INTEGER, IN start_date DATE, IN end_date DATE)
+RETURNS TABLE(eid INTEGER, total_teaching_hours INTERVAL, month INTEGER, day INTEGER, available_hours TIME[]) AS $$ -- Or use [] for array?
+DECLARE
+    curs CURSOR FOR (SELECT Employees.eid, Employees.name FROM Employees
+        WHERE Employees.eid IN (
+            SELECT Instructors.eid FROM Instructors
+                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.course_id = course_identifier)
+        )
+        ORDER BY eid ASC
+    );
+    r RECORD;
+    start_date_helper DATE;
+    start_time_helper TIME;
+    is_unavail INTEGER;
+    total_teaching_hours_helper INTERVAL;
+    available_hours_helper TIME[];
+    course_duration INTERVAL;
+BEGIN
+    start_date_helper := start_date;
+    start_time_helper := '09:00:00';
+    is_unavail := 0;
+    total_teaching_hours_helper := INTERVAL '0 hour';
+    available_hours_helper := '{}';
+
+    SELECT duration INTO course_duration
+    FROM Courses
+    WHERE Courses.course_id = course_identifier;
+
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        LOOP
+            EXIT WHEN start_date_helper = (end_date + INTERVAL '1 day');
+
+            is_unavail := 0;
+
+            SELECT SUM(end_time - start_time) INTO total_teaching_hours_helper FROM Sessions
+            WHERE Sessions.course_id = course_identifier
+            AND Sessions.eid = r.eid
+            AND EXTRACT(Month FROM start_date_helper) = EXTRACT(Month FROM Sessions.session_date);
+
+            IF start_time_helper = ('18:00:00' - course_duration + INTERVAL '1 hour') THEN
+                IF array_length(available_hours_helper, 1) > 0 THEN
+                    eid := r.eid;
+                    total_teaching_hours := total_teaching_hours_helper;
+                    SELECT EXTRACT(Month FROM start_date_helper) INTO month;
+                    SELECT EXTRACT(Day FROM start_date_helper) INTO day;
+                    available_hours := available_hours_helper;
+                    RETURN NEXT;
+                END IF;
+                start_time_helper := '09:00:00'; -- Earliest lesson at 9
+                start_date_helper := start_date_helper + INTERVAL '1 day'; -- Next day
+                available_hours_helper := '{}';
+            ELSIF start_time_helper = ('12:00:00' - course_duration + INTERVAL '1 hour') THEN
+                start_time_helper := '14:00:00';
+            ELSE
+                SELECT COUNT(*) INTO is_unavail FROM Sessions 
+                WHERE Sessions.course_id = course_identifier
+                AND Sessions.eid = r.eid
+                AND Sessions.session_date = start_date_helper
+                AND (start_time_helper, start_time_helper + course_duration) OVERLAPS ((Sessions.start_time - INTERVAL '1 hour'), (Sessions.end_time + INTERVAL '1 hour'));
+
+                IF is_unavail = 0 THEN
+                    SELECT ARRAY_APPEND(available_hours_helper, start_time_helper) INTO available_hours_helper;
+                END IF;
+                start_time_helper := start_time_helper + INTERVAL '1 hour';
+            END IF;
+        END LOOP;
+        start_date_helper := start_date;
+        start_time_helper := '09:00:00';
+    END LOOP;
+    CLOSE curs;
+END;
+$$ LANGUAGE plpgsql;
+
 
 -- 8.find_rooms: 
 /*
@@ -414,6 +536,86 @@ The inputs to the routine include the following:
 If the registration transaction is valid, this routine will process the registration with the necessary updates (e.g., payment/redemption).
 */
 
+/*
+Things to note:
+- When a customer register for a course session, we use his first credit card to register. (credit card not given)
+*/
+CREATE OR REPLACE PROCEDURE register_sessions(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
+AS $$
+DECLARE
+    curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    r RECORD;
+    is_redeem INTEGER;
+    is_register INTEGER;
+    customer_cc_num TEXT;
+    redeem_package_id INTEGER;
+    package_purchase_date DATE;
+BEGIN
+    is_redeem := 0;
+    is_register := 0;
+
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+
+        SELECT COUNT(*) INTO is_redeem  -- Check whether custoemr redeems or purchase the session
+        FROM Redeems
+        WHERE Redeems.course_id = course_identifier 
+        AND Redeems.launch_date = offering_launch_date 
+        AND Redeems.card_number = r.card_number;
+
+        SELECT COUNT(*) INTO is_register
+        FROM Registers
+        WHERE Registers.course_id = course_identifier
+        AND Registers.launch_date = offering_launch_date
+        AND Registers.card_number = r.card_number;
+
+        IF is_redeem > 0 OR is_register > 0 THEN
+            CLOSE curs;
+            RAISE EXCEPTION 'This customer has already redeem or register for this course offering';
+        END IF;
+    END LOOP;
+    CLOSE curs;
+    
+    SELECT card_number INTO customer_cc_num FROM Owns_credit_cards 
+    WHERE Owns_credit_cards.cust_id = customer_id 
+    LIMIT 1; -- If customer has multiple cc card then we choose the first.
+
+    IF payment_method = 'credit card' THEN -- insert into register table.
+        INSERT INTO Registers VALUES (customer_cc_num, course_identifier, offering_launch_date, session_id, CURRENT_DATE);
+    ELSIF payment_method = 'redemption' THEN -- insert into redeems table
+        OPEN curs;
+        LOOP
+            FETCH curs INTO r;
+            EXIT WHEN NOT FOUND;
+
+            redeem_package_id := 0;
+
+            SELECT package_id INTO redeem_package_id FROM Buys
+            WHERE Buys.card_number = r.card_number
+            AND num_of_redemption > 0;
+
+            SELECT purchase_date INTO package_purchase_date FROM Buys
+            WHERE Buys.card_number = r.card_number
+            AND num_of_redemption > 0;
+
+            IF redeem_package_id <> 0 THEN
+                INSERT INTO Redeems VALUES (r.card_number, redeem_package_id, package_purchase_date, course_identifier, offering_launch_date, session_id, CURRENT_DATE);
+
+                UPDATE Buys SET num_of_redemption = num_of_redemption - 1
+                WHERE card_number = r.card_number
+                AND package_id = redeem_package_id
+                AND purchase_date = package_purchase_date;
+            END IF;
+        END LOOP;
+    ELSE
+        RAISE EXCEPTION 'Payment method has to be stated in credit card or redemption';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
 -- 18.get_my_registrations
 /*
 This routine is used when a customer requests to view his/her active course registrations (i.e, registrations for course sessions that have not ended). 
@@ -495,6 +697,78 @@ The inputs to the routine include the following: customer identifier, and course
 If the cancellation request is valid, the routine will process the request with the necessary updates.
 */
 
+/*
+Things to note:
+- A customer can ONLY have 1 register/redeem for each COURSE OFFERING.
+- A customer can owns multiple credit card. Hence we iterate through the credit cards and check which credit card
+    the customer use to register/redeem the course session. 
+*/
+CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE)
+AS $$
+DECLARE
+    curs1 CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    r RECORD;
+    is_redeem INTEGER;
+    is_register INTEGER;
+    course_offering_price NUMERIC(12,2);
+    session_id INTEGER;
+BEGIN
+    is_redeem := 0;
+    is_register := 0;
+    course_offering_price := 0;
+
+    SELECT fees INTO course_offering_price -- Get the price of the course session/offerings. Its the same.
+    FROM Offerings
+    WHERE Offerings.course_id = course_identifier
+    AND Offerings.launch_date = offering_launch_date;
+
+    OPEN curs1;
+    LOOP
+        FETCH curs1 INTO r;
+        EXIT WHEN NOT FOUND;
+
+        SELECT COUNT(*) INTO is_redeem  -- Check whether customer redeems or purchase the session
+        FROM Redeems
+        WHERE Redeems.course_id = course_identifier 
+        AND Redeems.launch_date = offering_launch_date 
+        AND Redeems.card_number = r.card_number
+        AND CURRENT_DATE - Redeems.purchase_date <= 7;
+
+        SELECT COUNT(*) INTO is_register
+        FROM Registers
+        WHERE Registers.course_id = course_identifier
+        AND Registers.launch_date = offering_launch_date
+        AND Registers.card_number = r.card_number
+        AND CURRENT_DATE - Registers.registration_date <= 7;
+
+        IF (is_redeem > 0) THEN
+            SELECT sid INTO session_id FROM Redeems
+            WHERE Redeems.course_id = course_identifier 
+            AND Redeems.launch_date = offering_launch_date 
+            AND Redeems.card_number = r.card_number
+            AND CURRENT_DATE - Redeems.purchase_date <= 7
+            LIMIT 1;
+
+            INSERT INTO Cancels
+            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1); 
+
+        ELSIF (is_register > 0) THEN
+            SELECT sid INTO session_id
+            FROM Registers
+            WHERE Registers.course_id = course_identifier
+            AND Registers.launch_date = offering_launch_date
+            AND Registers.card_number = r.card_number
+            AND CURRENT_DATE - Registers.registration_date <= 7
+            LIMIT 1;
+
+            INSERT INTO Cancels
+            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
+        END IF;
+    END LOOP;
+    CLOSE curs1;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 21.update_instructor: 
 /*
 This routine is used to change the instructor for a course session. 
@@ -502,6 +776,57 @@ The inputs to the routine include the following:
     course offering identifier, session number, and identifier of the new instructor. 
 If the course session has not yet started and the update request is valid, the routine will process the request with the necessary updates.
 */
+
+/*
+Things to note:
+The way we interpret the update request is valid is if the instructor are able to teach the course session assign to him.
+So, there shouldn't be a clash of session timing taught by the instructor after the update. 
+*/
+CREATE OR REPLACE PROCEDURE update_instructor(IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, IN new_eid INTEGER)
+AS $$
+DECLARE
+    course_session_start_time TIME;
+    course_session_date DATE;
+    course_duration INTERVAL;
+    is_invalid_update INTEGER;
+BEGIN
+    is_invalid_update := 0;
+
+    SELECT start_time INTO course_session_start_time
+    FROM Sessions
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
+	
+	SELECT session_date INTO course_session_date
+    FROM Sessions
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
+
+    SELECT duration INTO course_duration FROM courses
+    WHERE courses.course_id = course_identifier;
+
+    SELECT COUNT(*) INTO is_invalid_update FROM Sessions
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.eid = new_eid
+    AND Sessions.session_date = course_session_date
+    AND Sessions.sid <> session_id
+    AND (course_session_start_time, course_session_start_time + course_duration) OVERLAPS
+        (Sessions.start_time - INTERVAL '1 hour', Sessions.end_time + INTERVAL '1 hour');
+	
+    IF (CURRENT_TIME < course_session_start_time) AND (CURRENT_DATE <= course_session_date) 
+        AND (is_invalid_update = 0) THEN
+            UPDATE Sessions
+            SET eid = new_eid
+            WHERE Sessions.course_id = course_identifier
+            AND Sessions.launch_date = offering_launch_date
+            AND Sessions.sid = session_id;
+    ELSE
+        RAISE EXCEPTION 'The course session has started or it is invalid update request';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 -- 22.update_room: 
 /*
@@ -511,6 +836,63 @@ The inputs to the routine include the following:
 If the course session has not yet started and the update request is valid, the routine will process the request with the necessary updates. 
 Note that update request should not be performed if the number of registrations for the session exceeds the seating capacity of the new room.
 */
+
+/*
+Things to note:
+- The number of customer going to attend the course is the sum of the customers who registered for the course and customers who redeem
+    from their course_package.
+- A customer can only register or redeems a session from a course offering.
+*/
+CREATE OR REPLACE PROCEDURE update_room(IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, IN new_rid INTEGER)
+AS $$
+DECLARE
+    course_session_start_time TIME;
+    course_session_date DATE;
+    new_room_seating_capacity INTEGER;
+    num_of_registration INTEGER;
+    num_of_redemption INTEGER;
+BEGIN
+    SELECT start_time INTO course_session_start_time
+    FROM Sessions
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
+
+    SELECT session_date INTO course_session_date
+    FROM Sessions
+    WHERE Sessions.course_id = course_identifier
+    AND Sessions.launch_date = offering_launch_date
+    AND Sessions.sid = session_id;
+
+    SELECT seating_capacity INTO new_room_seating_capacity
+    FROM Rooms
+    WHERE Rooms.rid = new_rid;
+
+    SELECT COUNT(*) INTO num_of_registration
+    FROM Registers
+    WHERE Registers.course_id = course_identifier
+    AND Registers.launch_date = offering_launch_date
+    AND Registers.sid = session_id;
+
+    SELECT COUNT(*) INTO num_of_redemption
+    FROM Redeems
+    WHERE Redeems.course_id = course_identifier
+    AND Redeems.launch_date = offering_launch_date
+    AND Redeems.sid = session_id;
+
+    IF (CURRENT_DATE <= course_session_date) AND (CURRENT_TIME < course_session_start_time)
+        AND ((num_of_registration + num_of_redemption) <= new_room_seating_capacity) THEN
+            UPDATE Sessions
+            SET rid = new_rid
+            WHERE Sessions.course_id = course_identifier
+            AND Sessions.launch_date = offering_launch_date
+            AND Sessions.sid = session_id;
+    ELSE
+        RAISE EXCEPTION 'The course probably has started or the new room doesnt have enough seating capacity';
+    END IF;
+END;
+$$ LANGUAGE plpgsql
+
 
 -- 23.remove_session:
 /*
@@ -923,6 +1305,61 @@ The input to the routine is a number of months (say N) and the routine returns a
     total amount of refunded registration fees (due to cancellations) for the month, and total number of course registrations via course package redemptions for the month. 
 For example, if the number of specified months is 3 and the current month is January 2021, the output will consist of one record for each of the following three months: January 2021, December 2020, and November 2020.
 */
+
+CREATE OR REPLACE FUNCTION view_summary_report(IN num_of_months INTEGER)
+RETURNS TABLE(year INTEGER, month INTEGER, total_salary_paid NUMERIC(12,2), total_sales NUMERIC(12,2), 
+    total_registration_fees NUMERIC(12,2), refund_amount NUMERIC(12,2), num_of_redemption INTEGER) AS $$
+DECLARE
+    current_month INTEGER;
+    current_year INTEGER;
+    counter INTEGER;
+BEGIN
+    counter := 0;  
+    SELECT EXTRACT(MONTH FROM CURRENT_DATE) INTO current_month;
+    SELECT EXTRACT(YEAR FROM CURRENT_DATE) INTO current_year;
+
+    LOOP
+        EXIT WHEN counter = num_of_months;
+
+        IF current_month < 1 THEN
+            current_month := 12;
+            current_year := current_year - 1;
+        ELSE
+            -- Computation of each components
+            year := current_year;
+			month := current_month;
+
+            SELECT SUM(amount) FROM Pay_slips INTO total_salary_paid
+            WHERE EXTRACT(MONTH FROM payment_date) = current_month 
+            AND EXTRACT(YEAR FROM payment_date) = current_year;
+
+            SELECT SUM(price) INTO total_sales FROM Buys NATURAL JOIN Course_packages
+            WHERE EXTRACT(MONTH FROM purchase_date) = current_month 
+            AND EXTRACT(YEAR FROM purchase_date) = current_year;
+
+            SELECT SUM(fees) INTO total_registration_fees FROM Registers NATURAL JOIN Offerings
+            WHERE EXTRACT(MONTH FROM registration_date) = current_month 
+            AND EXTRACT(YEAR FROM registration_date) = current_year;
+
+            SELECT SUM(refund_amt) INTO refund_amount FROM Cancels
+            WHERE EXTRACT(MONTH FROM cancellation_date) = current_month 
+            AND EXTRACT(YEAR FROM cancellation_date) = current_year;
+
+            SELECT COUNT(*) INTO num_of_redemption FROM Redeems
+            WHERE EXTRACT(MONTH FROM redemption_date) = current_month 
+            AND EXTRACT(YEAR FROM redemption_date) = current_year;
+
+            current_month := current_month - 1;
+            counter := counter + 1;
+
+            RETURN NEXT;
+
+            
+        END IF;
+
+    END LOOP; 
+END;
+$$ LANGUAGE plpgsql;
 
 -- 30.view_manager_report: 
 /*
@@ -1386,3 +1823,385 @@ LANGUAGE plpgsql;
 CREATE TRIGGER check_unique_instances_for_part_time_emp
 BEFORE INSERT OR UPDATE ON Part_time_emp
 FOR EACH ROW EXECUTE FUNCTION check_unique_instances_for_part_time_emp();
+
+/* ============================================================================================================ */
+
+-- Each instructor can teach at most one course session at any hour.
+
+CREATE OR REPLACE FUNCTION check_instructor_overlap_session_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs CURSOR FOR (SELECT * FROM Sessions WHERE Sessions.session_date = NEW.session_date AND NEW.eid = Sessions.eid);
+    r RECORD;
+BEGIN
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        IF (NEW.start_time, NEW.end_time) OVERLAPS (r.start_time, r.end_time) THEN
+                CLOSE curs;
+                RAISE EXCEPTION 'Instructor can teach at most one course session at any hour';
+        END IF;
+    END LOOP;
+    CLOSE curs;
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER check_instructor_overlap_session
+BEFORE INSERT OR UPDATE
+ON Sessions
+FOR EACH ROW
+EXECUTE FUNCTION check_instructor_overlap_session_func();
+
+/* ============================================================================================================ */
+
+--  Each part-time instructor must not teach more than 30 hours for each month.
+
+CREATE OR REPLACE FUNCTION max_work_hour_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs CURSOR FOR (SELECT * FROM Sessions WHERE Sessions.eid = NEW.eid AND NEW.eid IN (SELECT eid FROM Part_time_instructors)
+        AND EXTRACT(month from Sessions.session_date) = EXTRACT(month FROM NEW.session_date));
+    r RECORD;
+    total_work_hours INTERVAL;
+BEGIN
+    total_work_hours:= INTERVAL '0 hours';
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        total_work_hours:= total_work_hours +  (r.end_time - r.start_time);
+    END LOOP;
+    CLOSE curs;
+
+    total_work_hours := total_work_hours + (NEW.end_time - NEW.start_time);
+    IF total_work_hours <= INTERVAL '30 hours' THEN
+        RETURN NEW;
+    ELSE
+        RAISE EXCEPTION 'Each part-time instructor must not teach more than 30 hours for each month.';
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER max_work_hour
+BEFORE INSERT OR UPDATE
+ON Sessions
+FOR EACH ROW
+EXECUTE FUNCTION max_work_hour_func();
+
+/* ============================================================================================================ */
+
+--  An instructor who is assigned to teach a course session must be specialized in that course area.
+
+CREATE OR REPLACE FUNCTION valid_course_instructor_assignment_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    session_course_area TEXT;
+BEGIN
+    SELECT name INTO session_course_area
+    FROM Courses
+    WHERE Courses.course_id = NEW.course_id;
+
+    IF NEW.course_area = session_course_area THEN
+        RETURN NEW;
+    ElSE
+        RAISE EXCEPTION 'An instructor who is assigned to teach a course session must be specialized in that course area.';
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER valid_course_instructor_assignment
+BEFORE INSERT OR UPDATE
+ON Sessions
+FOR EACH ROW
+EXECUTE FUNCTION valid_course_instructor_assignment_func();
+
+/* ============================================================================================================ */
+
+CREATE OR REPLACE FUNCTION at_most_one_redeemed_session_in_offerings_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs1 CURSOR FOR (SELECT card_number FROM Owns_Credit_Cards O1 WHERE 
+        O1.cust_id in (
+            SELECT cust_id FROM Owns_Credit_Cards O2 WHERE O2.card_number = NEW.card_number
+        )
+    );
+    r RECORD;
+    offerings_deadline DATE;
+    is_registered INTEGER;
+    is_redeemed INTEGER;
+BEGIN
+    SELECT registration_deadline INTO offerings_deadline
+    FROM Offerings
+    WHERE Offerings.course_id = NEW.course_id
+    AND Offerings.launch_date = NEW.launch_date;
+
+    IF NEW.redemption_date > offerings_deadline THEN
+        RAISE EXCEPTION 'You are too late to redeem for this course session';
+    ELSE
+        OPEN curs1;
+        LOOP
+            FETCH curs1 INTO r;
+            EXIT WHEN NOT FOUND;
+
+            SELECT COUNT(*) INTO is_registered FROM Registers
+            WHERE Registers.course_id = NEW.course_id
+            AND Registers.launch_date = NEW.launch_date
+            AND Registers.card_number = r.card_number;
+
+            IF is_registered > 0 THEN
+                CLOSE curs1;
+                RAISE EXCEPTION 'This customer has already registered this course offerings';
+            END IF;
+
+            SELECT COUNT(*) INTO is_redeemed FROM Redeems
+            WHERE Redeems.course_id = NEW.course_id
+            AND Redeems.launch_date = NEW.launch_date
+            AND Redeems.card_number = r.card_number;
+
+            IF is_redeemed > 0 THEN
+                CLOSE curs1;
+                RAISE EXCEPTION 'This customer has already redeemed this course offerings';
+            END IF;
+        END LOOP;
+        CLOSE curs1;
+        RETURN NEW; -- The customer did not redeem or register this course yet.
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER at_most_one_redeemed_session_in_offerings
+BEFORE INSERT
+ON Redeems
+FOR EACH ROW
+EXECUTE FUNCTION at_most_one_redeemed_session_in_offerings_func();
+
+/* ============================================================================================================ */
+
+-- For each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
+
+CREATE OR REPLACE FUNCTION at_most_one_registered_session_in_offerings_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs CURSOR FOR (SELECT card_number FROM Owns_Credit_Cards O1 WHERE 
+        O1.cust_id in (
+            SELECT cust_id FROM Owns_Credit_Cards O2 WHERE O2.card_number = NEW.card_number
+        )
+    );
+    r RECORD;
+    offerings_deadline DATE;
+    is_registered INTEGER;
+    is_redeemed INTEGER;
+BEGIN
+    SELECT registration_deadline INTO offerings_deadline
+    FROM Offerings
+    WHERE Offerings.course_id = NEW.course_id
+    AND Offerings.launch_date = NEW.launch_date;
+
+    IF NEW.registration_date > offerings_deadline THEN
+        RAISE EXCEPTION 'You are too late to register for this course session';
+    ELSE
+        OPEN curs;
+        LOOP
+            FETCH curs INTO r;
+            EXIT WHEN NOT FOUND;
+
+            SELECT COUNT(*) INTO is_registered FROM Registers
+            WHERE Registers.course_id = NEW.course_id
+            AND Registers.launch_date = NEW.launch_date
+            AND Registers.card_number = r.card_number;
+
+            IF is_registered > 0 THEN
+                CLOSE curs;
+                RAISE EXCEPTION 'This customer has already registered this course offerings';
+            END IF;
+
+            SELECT COUNT(*) INTO is_redeemed FROM Redeems
+            WHERE Redeems.course_id = NEW.course_id
+            AND Redeems.launch_date = NEW.launch_date
+            AND Redeems.card_number = r.card_number;
+
+            IF is_redeemed > 0 THEN
+                CLOSE curs;
+                RAISE EXCEPTION 'This customer has already redeemed this course offerings';
+            END IF;
+        END LOOP;
+        CLOSE curs;
+        RETURN NEW; -- The customer did not redeem or register this course yet.
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER at_most_one_registered_session_in_offerings
+BEFORE INSERT
+ON Registers
+FOR EACH ROW
+EXECUTE FUNCTION at_most_one_registered_session_in_offerings_func();
+
+/* ============================================================================================================ */
+
+-- Each instructor must not be assigned to teach two consecutive course sessions
+
+CREATE OR REPLACE FUNCTION check_consec_course_session_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs CURSOR FOR (SELECT * FROM Sessions WHERE Sessions.session_date = NEW.session_date AND Sessions.eid = NEW.eid);
+    r RECORD;
+BEGIN
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        IF ((NEW.start_time - r.start_time >= INTERVAL '0 hour') AND
+            (NEW.start_time- r.end_time < INTERVAL '1 hour')) OR
+            ((NEW.end_time - r.start_time <= INTERVAL '0 hour') AND
+            (r.start_time - NEW.end_time < INTERVAL '1 hour')) THEN
+            CLOSE curs;
+            RAISE EXCEPTION 'No instructor can be assigned to teach two consecutive course sessions';
+        END IF;
+    END LOOP;
+    CLOSE curs;
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER check_consec_course_session
+BEFORE INSERT OR UPDATE
+ON Sessions
+FOR EACH ROW
+EXECUTE FUNCTION check_consec_course_session_func();
+
+/* ============================================================================================================ */
+
+CREATE OR REPLACE FUNCTION refund_session_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = NEW.cust_id);
+    r RECORD;
+    is_found INTEGER; -- We need to run through all the cards that customers has to check which card he/she used.
+    package_used_for_redemption INTEGER; 
+BEGIN
+    is_found = 0;
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        IF NEW.package_credit > 0 THEN
+            SELECT COUNT(*) INTO is_found FROM Redeems
+            WHERE Redeems.course_id = NEW.course_id
+            AND Redeems.launch_date = NEW.launch_date
+            AND Redeems.sid = NEW.sid
+            AND Redeems.card_number = r.card_number;
+
+            IF is_found > 0 THEN
+                SELECT package_id INTO package_used_for_redemption FROM Redeems
+                WHERE Redeems.course_id = NEW.course_id
+                AND Redeems.launch_date = NEW.launch_date
+                AND Redeems.sid = NEW.sid
+                AND Redeems.card_number = r.card_number;
+
+                UPDATE Buys SET num_of_redemption = num_of_redemption + 1 -- add num_remaining_redemptions in buys
+                WHERE Buys.card_number = r.card_number
+                AND package_id = package_used_for_redemption;
+
+                DELETE FROM Redeems -- delete the entry in redeems
+                WHERE Redeems.course_id = NEW.course_id
+                AND Redeems.launch_date = NEW.launch_date
+                AND Redeems.sid = NEW.sid
+                AND Redeems.card_number = r.card_number;
+
+                CLOSE CURS;
+                RETURN NEW;
+            END IF;
+
+        ELSE
+            SELECT COUNT(*) INTO is_found FROM Registers
+            WHERE Registers.course_id = NEW.course_id
+            AND Registers.launch_date = NEW.launch_date
+            AND Registers.sid = NEW.sid
+            AND Registers.card_number = r.card_number;
+
+            IF is_found > 0 THEN
+                DELETE FROM Registers -- delete the row in registers
+                WHERE Registers.course_id = NEW.course_id
+                AND Registers.launch_date = NEW.launch_date
+                AND Registers.sid = NEW.sid
+                AND Registers.card_number = r.card_number;
+                CLOSE curs;
+                RETURN NEW;
+            END IF;
+        END IF;
+    END LOOP;
+    CLOSE curs;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER refund_session
+BEFORE INSERT OR UPDATE
+ON Cancels
+FOR EACH ROW
+EXECUTE FUNCTION refund_session_func();
+
+/* ============================================================================================================ */
+
+CREATE OR REPLACE FUNCTION receive_dupl_cancels_func() -- Allows a customer to cancels same course offering in the same day 
+RETURNS TRIGGER AS
+$$
+DECLARE
+    is_exist INTEGER;
+    is_redeemed INTEGER;
+BEGIN
+    IF NEW.package_credit > 0 THEN
+        is_redeemed := NEW.package_credit;
+    ELSE
+        is_redeemed := 0;
+    END IF;
+
+    SELECT COUNT(*) INTO is_exist FROM Cancels
+    WHERE NEW.cust_id = Cancels.cust_id
+    AND NEW.course_id = Cancels.course_id
+    AND NEW.launch_date = Cancels.launch_date
+    AND NEW.sid = Cancels.sid
+    AND NEW.cancellation_date = Cancels.cancellation_date;
+
+    IF is_exist > 0 THEN
+        IF is_redeemed > 0 THEN
+            UPDATE Cancels SET package_credit = package_credit + 1
+            WHERE NEW.cust_id = Cancels.cust_id
+            AND NEW.course_id = Cancels.course_id
+            AND NEW.launch_date = Cancels.launch_date
+            AND NEW.sid = Cancels.sid
+            AND NEW.cancellation_date = Cancels.cancellation_date;
+        ELSE  -- Customer cancels the register.
+            UPDATE Cancels SET refund_amt = refund_amt + NEW.refund_amt
+            WHERE NEW.cust_id = Cancels.cust_id
+            AND NEW.course_id = Cancels.course_id
+            AND NEW.launch_date = Cancels.launch_date
+            AND NEW.sid = Cancels.sid
+            AND NEW.cancellation_date = Cancels.cancellation_date;
+        END IF;
+        RETURN NULL; -- This will prevent any insertion of duplicated record which will violates the PK
+    END IF;
+    RETURN NEW; -- NEW record.
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER receive_dupl_cancels
+BEFORE INSERT
+ON Cancels
+FOR EACH ROW
+EXECUTE FUNCTION receive_dupl_cancels_func();
