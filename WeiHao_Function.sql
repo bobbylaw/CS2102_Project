@@ -1,20 +1,60 @@
+-- For our implementation, our total_registration_fees represent those registrations that is NOT CANCELLED
+-- ALL CANCELLED registration will be not present in the register table because they has been cancelled.
+-- So it is possible that the refund_amt > total_registration_fees. This doesn't mean that the company lose money.
+-- Because for every record present in the cancellation (cancelled from register), the company earns the 10% course fees. 
+
 CREATE OR REPLACE FUNCTION view_summary_report(IN num_of_months INTEGER)
 RETURNS TABLE(year INTEGER, month INTEGER, total_salary_paid NUMERIC(12,2), total_sales NUMERIC(12,2), 
-    total_registration_fees NUMERIC(12,2), refund_amt NUMERIC(12,2), num_of_redemption INTEGER) AS $$
+    total_registration_fees NUMERIC(12,2), refund_amount NUMERIC(12,2), num_of_redemption INTEGER) AS $$
 DECLARE
-
+    current_month INTEGER;
+    current_year INTEGER;
+    counter INTEGER;
 BEGIN
+    counter := 0;  
+    SELECT EXTRACT(MONTH FROM CURRENT_DATE) INTO current_month;
+    SELECT EXTRACT(YEAR FROM CURRENT_DATE) INTO current_year;
 
-    -- Year just abstract
-    -- Month just abstract
-    -- LOOP through each month
-    -- total_salary_paid = SELECT SUM(amount) FROM pay_slips;
-    -- total_sales: SELECT SUM(price) FROM Buys NATURAL JOIN Course_packages
-    -- total registration fees: SELECT SUM(fees) FROM Sessions NATURAL JOIN Offerings
-    -- refunded registration fees: SELECT SUM(refund_amt) FROM Cancels WHERE package_credit <> 0;
-    -- num_of_redemption: SELECT COUNT(*) FROM Redeems;
-    -- Remember to add in the month factor!
+    LOOP
+        EXIT WHEN counter = num_of_months;
 
+        IF current_month < 1 THEN
+            current_month := 12;
+            current_year := current_year - 1;
+        ELSE
+            -- Computation of each components
+            year := current_year;
+			month := current_month;
+
+            SELECT SUM(amount) FROM Pay_slips INTO total_salary_paid
+            WHERE EXTRACT(MONTH FROM payment_date) = current_month 
+            AND EXTRACT(YEAR FROM payment_date) = current_year;
+
+            SELECT SUM(price) INTO total_sales FROM Buys NATURAL JOIN Course_packages
+            WHERE EXTRACT(MONTH FROM purchase_date) = current_month 
+            AND EXTRACT(YEAR FROM purchase_date) = current_year;
+
+            SELECT SUM(fees) INTO total_registration_fees FROM Registers NATURAL JOIN Offerings
+            WHERE EXTRACT(MONTH FROM registration_date) = current_month 
+            AND EXTRACT(YEAR FROM registration_date) = current_year;
+
+            SELECT SUM(refund_amt) INTO refund_amount FROM Cancels
+            WHERE EXTRACT(MONTH FROM cancellation_date) = current_month 
+            AND EXTRACT(YEAR FROM cancellation_date) = current_year;
+
+            SELECT COUNT(*) INTO num_of_redemption FROM Redeems
+            WHERE EXTRACT(MONTH FROM redemption_date) = current_month 
+            AND EXTRACT(YEAR FROM redemption_date) = current_year;
+
+            current_month := current_month - 1;
+            counter := counter + 1;
+
+            RETURN NEXT;
+
+            
+        END IF;
+
+    END LOOP; 
 END;
 $$ LANGUAGE plpgsql;
 
@@ -247,7 +287,6 @@ The inputs to the routine include the following: customer identifier, and course
 If the cancellation request is valid, the routine will process the request with the necessary updates.
 */
 
--- change customer_id to email. => I can't because cancels need this customer ID
 -- A customer can ONLY have 1 register/redeems for each COURSE OFFERING.
 -- For each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
 -- cancel 1 of the sessions.
