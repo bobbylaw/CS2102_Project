@@ -1,8 +1,78 @@
+CREATE OR REPLACE FUNCTION at_most_one_redeemed_session_in_offerings_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs1 CURSOR FOR (SELECT card_number FROM Owns_Credit_Cards O1 WHERE 
+        O1.cust_id in (
+            SELECT cust_id FROM Owns_Credit_Cards O2 WHERE O2.card_number = NEW.card_number
+        )
+    );
+    r RECORD;
+    offerings_deadline DATE;
+    is_registered INTEGER;
+    is_redeemed INTEGER;
+BEGIN
+    SELECT registration_deadline INTO offerings_deadline
+    FROM Offerings
+    WHERE Offerings.course_id = NEW.course_id
+    AND Offerings.launch_date = NEW.launch_date;
+
+    IF NEW.redemption_date > offerings_deadline THEN
+        RAISE EXCEPTION 'You are too late to redeem for this course session';
+    ELSE
+        OPEN curs1;
+        LOOP
+            FETCH curs1 INTO r;
+            EXIT WHEN NOT FOUND;
+
+            SELECT COUNT(*) INTO is_registered FROM Registers
+            WHERE Registers.course_id = NEW.course_id
+            AND Registers.launch_date = NEW.launch_date
+            AND Registers.card_number = r.card_number;
+
+            IF is_registered > 0 THEN
+                CLOSE curs1;
+                RAISE EXCEPTION 'This customer has already registered this course offerings';
+            END IF;
+
+            SELECT COUNT(*) INTO is_redeemed FROM Redeems
+            WHERE Redeems.course_id = NEW.course_id
+            AND Redeems.launch_date = NEW.launch_date
+            AND Redeems.card_number = r.card_number;
+
+            IF is_redeemed > 0 THEN
+                CLOSE curs1;
+                RAISE EXCEPTION 'This customer has already redeemed this course offerings';
+            END IF;
+        END LOOP;
+        CLOSE curs1;
+        RETURN NEW; -- The customer did not redeem or register this course yet.
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER at_most_one_redeemed_session_in_offerings
+BEFORE INSERT
+ON Redeems
+FOR EACH ROW
+EXECUTE FUNCTION at_most_one_redeemed_session_in_offerings_func();
+
+
+
+
+
+
 -- For each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
 CREATE OR REPLACE FUNCTION at_most_one_registered_session_in_offerings_func()
 RETURNS TRIGGER AS
 $$
 DECLARE
+    curs CURSOR FOR (SELECT card_number FROM Owns_Credit_Cards O1 WHERE 
+        O1.cust_id in (
+            SELECT cust_id FROM Owns_Credit_Cards O2 WHERE O2.card_number = NEW.card_number
+        )
+    );
+    r RECORD;
     offerings_deadline DATE;
     is_registered INTEGER;
     is_redeemed INTEGER;
@@ -15,25 +85,33 @@ BEGIN
     IF NEW.registration_date > offerings_deadline THEN
         RAISE EXCEPTION 'You are too late to register for this course session';
     ELSE
-        SELECT COUNT(*) INTO is_registered FROM Registers
-        WHERE Registers.course_id = NEW.course_id
-        AND Registers.launch_date = NEW.launch_date
-        AND Registers.card_number = NEW.card_number;
+        OPEN curs;
+        LOOP
+            FETCH curs INTO r;
+            EXIT WHEN NOT FOUND;
 
-        IF is_registered > 0 THEN
-            RAISE EXCEPTION 'This customer has already registered this course offerings';
-        ELSE 
+            SELECT COUNT(*) INTO is_registered FROM Registers
+            WHERE Registers.course_id = NEW.course_id
+            AND Registers.launch_date = NEW.launch_date
+            AND Registers.card_number = r.card_number;
+
+            IF is_registered > 0 THEN
+                CLOSE curs;
+                RAISE EXCEPTION 'This customer has already registered this course offerings';
+            END IF;
+
             SELECT COUNT(*) INTO is_redeemed FROM Redeems
             WHERE Redeems.course_id = NEW.course_id
             AND Redeems.launch_date = NEW.launch_date
-            AND Redeems.card_number = NEW.card_number
+            AND Redeems.card_number = r.card_number;
 
             IF is_redeemed > 0 THEN
+                CLOSE curs;
                 RAISE EXCEPTION 'This customer has already redeemed this course offerings';
-            ELSE
-                RETURN NEW; -- The customer did not redeem or register this course yet.
             END IF;
-        END IF;
+        END LOOP;
+        CLOSE curs;
+        RETURN NEW; -- The customer did not redeem or register this course yet.
     END IF;
 END;
 $$ LANGUAGE plpgsql;

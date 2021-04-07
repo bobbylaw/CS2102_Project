@@ -159,7 +159,10 @@ BEGIN
         WHERE r.eid = Sessions.eid 
         AND (start_time1, start_time1 + course_duration) OVERLAPS ((Sessions.start_time - INTERVAL '1 hour'), (Sessions.end_time + INTERVAL '1 hour'))
         AND session_date1 = Sessions.session_date
-        AND course_id1 = Sessions.course_id; -- This might be redundant but no harm putting. Safer.
+        AND course_id1 = Sessions.course_id; -- I delete this in the proc.sql because many different course be in 'Math' course area
+        -- Then, if I were to add this. Imagine the instructor is teaching a session(clash timing) of course_id of 1. Then I find instructor on course_id of 2 with the same
+        -- course_area as course_id 1. This will not return me the clash of start_time of session 2 and tells me the instructor is free but it is not because it is teaching
+        -- course_id 1.
 
         IF is_unavail = 0 THEN
             eid := r.eid;
