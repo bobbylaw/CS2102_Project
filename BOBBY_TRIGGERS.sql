@@ -425,18 +425,13 @@ insert the values into output table
 CREATE OR REPLACE FUNCTION promote_courses() 
 RETURNS TABLE(customer_id INTEGER, customer_name TEXT, course_area TEXT, _course_id INTEGER, course_title TEXT, course_launch_date DATE, course_registration_deadline DATE, course_fees NUMERIC(12,2)) AS $$
 DECLARE
-	curs1 CURSOR FOR (SELECT DISTINCT ON (card_number) *
+	curs1 CURSOR FOR (SELECT DISTINCT ON (cust_id) *
 			FROM Customers natural join Owns_credit_cards natural left join Registers
-			WHERE CURRENT_DATE - registration_date >= 180 or registration_date ISNULL
-			ORDER BY card_number, registration_date DESC);
+			ORDER BY cust_id);
 	r1 RECORD;
 	
 	curs2 refcursor;
 	r2 RECORD;
-	
-	curs3 refcursor;
-	r3 RECORD;
-	
 BEGIN
 	OPEN curs1;
 	LOOP
@@ -462,25 +457,19 @@ BEGIN
 			CLOSE curs2;
 		ELSE
 			--get three latest course registration for each inactive customer, foreach course_area, find the offering available
-			OPEN curs2 FOR (SELECT DISTINCT C.name, R.course_id FROM Registers R natural join Courses C WHERE R.card_number = r1.card_number LIMIT 3);
+			OPEN curs2 FOR (SELECT * FROM Offerings O natural join (SELECT C.name, R.course_id, title FROM Registers R natural join Courses C WHERE R.card_number = r1.card_number LIMIT 3) AS R WHERE registration_deadline - CURRENT_DATE > 0 ORDER BY registration_deadline ASC);
 			LOOP
 				FETCH curs2 into r2;
 				EXIT WHEN NOT FOUND;
-				OPEN curs3 FOR (SELECT course_id, launch_date, registration_deadline, fees FROM Offerings O natural join Courses C WHERE C.name = r2.name AND registration_deadline - CURRENT_DATE > 0 ORDER BY registration_deadline ASC);
-				LOOP
-					FETCH curs3 into r3;
-					EXIT WHEN NOT FOUND;
-					customer_id := r1.cust_id;
-					customer_name := r1.name; --customer name
-					_course_id := r3.course_id;
-					course_area := r2.name; --course name
-					course_title := (SELECT course_title FROM Courses C WHERE C.course_id = r3.course_id);
-					course_launch_date := r3.launch_date;
-					course_registration_deadline := r3.registration_deadline;
-					course_fees := r3.fees;
-					RETURN NEXT;
-				END LOOP;
-				CLOSE curs3;
+				customer_id := r1.cust_id;
+				customer_name := r1.name; --customer name
+				_course_id := r2.course_id;
+				course_area := r2.name; --course name
+				course_title := r2.title;
+				course_launch_date := r2.launch_date;
+				course_registration_deadline := r2.registration_deadline;
+				course_fees := r2.fees;
+				RETURN NEXT;
 			END LOOP;
 			CLOSE curs2;
 		END IF;
