@@ -20,7 +20,7 @@ BEGIN
         AND Registers.launch_date = NEW.launch_date
         AND Registers.card_number = NEW.card_number;
 
-        IF is_registered > 1 THEN
+        IF is_registered > 0 THEN
             RAISE EXCEPTION 'This customer has already registered this course offerings';
         ELSE 
             SELECT COUNT(*) INTO is_redeemed FROM Redeems
@@ -28,7 +28,7 @@ BEGIN
             AND Redeems.launch_date = NEW.launch_date
             AND Redeems.card_number = NEW.card_number
 
-            IF is_redeemed > 1 THEN
+            IF is_redeemed > 0 THEN
                 RAISE EXCEPTION 'This customer has already redeemed this course offerings';
             ELSE
                 RETURN NEW; -- The customer did not redeem or register this course yet.
@@ -171,6 +171,127 @@ BEFORE INSERT OR UPDATE
 ON Sessions
 FOR EACH ROW
 EXECUTE FUNCTION max_work_hour_func();
+
+
+--  Each customer can have at most one active or partially active package.
+CREATE OR REPLACE FUNCTION refund_session_func()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = NEW.cust_id);
+    r RECORD;
+    is_found INTEGER; -- We need to run through all the cards that customers has to check which card he/she used.
+    package_used_for_redemption INTEGER; 
+BEGIN
+    is_found = 0;
+    OPEN curs;
+    LOOP
+        FETCH curs INTO r;
+        EXIT WHEN NOT FOUND;
+        IF NEW.package_credit > 0 THEN
+            SELECT COUNT(*) INTO is_found FROM Redeems
+            WHERE Redeems.course_id = NEW.course_id
+            AND Redeems.launch_date = NEW.launch_date
+            AND Redeems.sid = NEW.sid
+            AND Redeems.card_number = r.card_number;
+
+            IF is_found > 0 THEN
+                SELECT package_id INTO package_used_for_redemption FROM Redeems
+                WHERE Redeems.course_id = NEW.course_id
+                AND Redeems.launch_date = NEW.launch_date
+                AND Redeems.sid = NEW.sid
+                AND Redeems.card_number = r.card_number;
+
+                UPDATE Buys SET num_of_redemption = num_of_redemption + 1 -- add num_remaining_redemptions in buys
+                WHERE Buys.card_number = r.card_number
+                AND package_id = package_used_for_redemption;
+
+                DELETE FROM Redeems -- delete the entry in redeems
+                WHERE Redeems.course_id = NEW.course_id
+                AND Redeems.launch_date = NEW.launch_date
+                AND Redeems.sid = NEW.sid
+                AND Redeems.card_number = r.card_number;
+
+                CLOSE CURS;
+                RETURN NEW;
+            END IF;
+
+        ELSE
+            SELECT COUNT(*) INTO is_found FROM Registers
+            WHERE Registers.course_id = NEW.course_id
+            AND Registers.launch_date = NEW.launch_date
+            AND Registers.sid = NEW.sid
+            AND Registers.card_number = r.card_number;
+
+            IF is_found > 0 THEN
+                DELETE FROM Registers -- delete the row in registers
+                WHERE Registers.course_id = NEW.course_id
+                AND Registers.launch_date = NEW.launch_date
+                AND Registers.sid = NEW.sid
+                AND Registers.card_number = r.card_number;
+                CLOSE curs;
+                RETURN NEW;
+            END IF;
+        END IF;
+    END LOOP;
+    CLOSE curs;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER refund_session
+BEFORE INSERT OR UPDATE
+ON Cancels
+FOR EACH ROW
+EXECUTE FUNCTION refund_session_func();
+
+CREATE OR REPLACE FUNCTION receive_dupl_cancels_func() -- Allows a customer to cancels same course offering in the same day 
+RETURNS TRIGGER AS
+$$
+DECLARE
+    is_exist INTEGER;
+    is_redeemed INTEGER;
+BEGIN
+    IF NEW.package_credit > 0 THEN
+        is_redeemed := NEW.package_credit;
+    ELSE
+        is_redeemed := 0;
+    END IF;
+
+    SELECT COUNT(*) INTO is_exist FROM Cancels
+    WHERE NEW.cust_id = Cancels.cust_id
+    AND NEW.course_id = Cancels.course_id
+    AND NEW.launch_date = Cancels.launch_date
+    AND NEW.sid = Cancels.sid
+    AND NEW.cancellation_date = Cancels.cancellation_date;
+
+    IF is_exist > 0 THEN
+        IF is_redeemed > 0 THEN
+            UPDATE Cancels SET package_credit = package_credit + 1
+            WHERE NEW.cust_id = Cancels.cust_id
+            AND NEW.course_id = Cancels.course_id
+            AND NEW.launch_date = Cancels.launch_date
+            AND NEW.sid = Cancels.sid
+            AND NEW.cancellation_date = Cancels.cancellation_date;
+        ELSE  -- Customer cancels the register.
+            UPDATE Cancels SET refund_amt = refund_amt + NEW.refund_amt
+            WHERE NEW.cust_id = Cancels.cust_id
+            AND NEW.course_id = Cancels.course_id
+            AND NEW.launch_date = Cancels.launch_date
+            AND NEW.sid = Cancels.sid
+            AND NEW.cancellation_date = Cancels.cancellation_date;
+        END IF;
+        RETURN NULL; -- This will prevent any insertion of duplicated record which will violates the PK
+    END IF;
+    RETURN NEW; -- NEW record.
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER receive_dupl_cancels
+BEFORE INSERT
+ON Cancels
+FOR EACH ROW
+EXECUTE FUNCTION receive_dupl_cancels_func();
 
 
 /*
