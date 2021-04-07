@@ -1,3 +1,23 @@
+CREATE OR REPLACE FUNCTION view_summary_report(IN num_of_months INTEGER)
+RETURNS TABLE(year INTEGER, month INTEGER, total_salary_paid NUMERIC(12,2), total_sales NUMERIC(12,2), 
+    total_registration_fees NUMERIC(12,2), refund_amt NUMERIC(12,2), num_of_redemption INTEGER) AS $$
+DECLARE
+
+BEGIN
+
+    -- Year just abstract
+    -- Month just abstract
+    -- LOOP through each month
+    -- total_salary_paid = SELECT SUM(amount) FROM pay_slips;
+    -- total_sales: SELECT SUM(price) FROM Buys NATURAL JOIN Course_packages
+    -- total registration fees: SELECT SUM(fees) FROM Sessions NATURAL JOIN Offerings
+    -- refunded registration fees: SELECT SUM(refund_amt) FROM Cancels WHERE package_credit <> 0;
+    -- num_of_redemption: SELECT COUNT(*) FROM Redeems;
+    -- Remember to add in the month factor!
+
+END;
+$$ LANGUAGE plpgsql;
+
 -- register_session: This routine is used when a customer requests to register for a session in a course offering. 
 -- The inputs to the routine include the following: customer identifier, course offering identifier, session number, and payment method (credit card or redemption from active package).
 -- If the registration transaction is valid, this routine will process the registration with the necessary updates (e.g., payment/redemption).
@@ -181,7 +201,6 @@ BEGIN
                 END IF;
                 start_time_helper := '09:00:00'; -- Earliest lesson at 9
                 start_date_helper := start_date_helper + INTERVAL '1 day'; -- Next day
-                RAISE NOTICE '%', available_hours_helper;
                 available_hours_helper := '{}';
             ELSIF start_time_helper = '12:00:00' THEN
                 start_time_helper := '14:00:00';

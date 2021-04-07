@@ -235,7 +235,7 @@ BEGIN
         END IF;
     END LOOP;
     CLOSE curs;
-    RETURN NEW;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -245,6 +245,53 @@ ON Cancels
 FOR EACH ROW
 EXECUTE FUNCTION refund_session_func();
 
+CREATE OR REPLACE FUNCTION receive_dupl_cancels_func() -- Allows a customer to cancels same course offering in the same day 
+RETURNS TRIGGER AS
+$$
+DECLARE
+    is_exist INTEGER;
+    is_redeemed INTEGER;
+BEGIN
+    IF NEW.package_credit > 0 THEN
+        is_redeemed := NEW.package_credit;
+    ELSE
+        is_redeemed := 0;
+    END IF;
+
+    SELECT COUNT(*) INTO is_exist FROM Cancels
+    WHERE NEW.cust_id = Cancels.cust_id
+    AND NEW.course_id = Cancels.course_id
+    AND NEW.launch_date = Cancels.launch_date
+    AND NEW.sid = Cancels.sid
+    AND NEW.cancellation_date = Cancels.cancellation_date;
+
+    IF is_exist > 0 THEN
+        IF is_redeemed > 0 THEN
+            UPDATE Cancels SET package_credit = package_credit + 1
+            WHERE NEW.cust_id = Cancels.cust_id
+            AND NEW.course_id = Cancels.course_id
+            AND NEW.launch_date = Cancels.launch_date
+            AND NEW.sid = Cancels.sid
+            AND NEW.cancellation_date = Cancels.cancellation_date;
+        ELSE  -- Customer cancels the register.
+            UPDATE Cancels SET refund_amt = refund_amt + NEW.refund_amt
+            WHERE NEW.cust_id = Cancels.cust_id
+            AND NEW.course_id = Cancels.course_id
+            AND NEW.launch_date = Cancels.launch_date
+            AND NEW.sid = Cancels.sid
+            AND NEW.cancellation_date = Cancels.cancellation_date;
+        END IF;
+        RETURN NULL; -- This will prevent any insertion of duplicated record which will violates the PK
+    END IF;
+    RETURN NEW; -- NEW record.
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER receive_dupl_cancels
+BEFORE INSERT
+ON Cancels
+FOR EACH ROW
+EXECUTE FUNCTION receive_dupl_cancels_func();
 
 
 /*
