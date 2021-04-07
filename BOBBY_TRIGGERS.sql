@@ -482,17 +482,17 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION view_manager_report()
 RETURNS TABLE(manager_name TEXT, total_num_of_course_areas_managed INTEGER, total_number_of_course_offerings_ended_this_year INTEGER, total_net_reg_fees NUMERIC(12,2), highest_total_course_offerings TEXT[]) AS $$
 DECLARE
-	curs1 CURSOR FOR (SELECT * FROM Managers);
+	curs1 CURSOR FOR (SELECT eid, name FROM Employees natural join Managers ORDER BY name);
 	r1 RECORD;
 	
 	curs2 refcursor;
 	r2 RECORD;
 	
 	total_count_from_credit_card INTEGER;
-	total_sum_from_credit_card NUMERIC := 0;
-	total_sum_from_redemption NUMERIC := 0;
-	highest_amount NUMERIC := 0;
-	highest_course_id INTEGER[] = NULL;
+	total_sum_from_credit_card NUMERIC;
+	total_sum_from_redemption NUMERIC;
+	highest_amount NUMERIC := -1;
+	highest_course_id INTEGER[];
 	temp_course_id INTEGER;
 	highest_total_offering TEXT[];
 	current_year INTEGER = (SELECT EXTRACT('YEAR' FROM CURRENT_DATE));
@@ -502,24 +502,28 @@ BEGIN
 	LOOP
 		FETCH curs1 into r1;
 		EXIT WHEN NOT FOUND;
-		total_num_of_course_areas_managed := (SELECT count(*) FROM course_areas C where C.eid = r.eid);
-		total_number_of_course_offerings_ended_this_year := (SELECT count(*) FROM course_areas natural left join Offerings where eid = r.eid and EXTRACT('YEAR'FROM end_date) = current_year);
+		manager_name := r1.name;
+		total_num_of_course_areas_managed := (SELECT count(*) FROM course_areas C where C.eid = r1.eid);
+		total_number_of_course_offerings_ended_this_year := (SELECT count(*) FROM (course_areas natural join Courses) AS C join Offerings O on C.course_id = O.course_id where C.eid = r1.eid and EXTRACT('YEAR'FROM end_date) = current_year);
 		
-		OPEN curs2 FOR (SELECT * FROM course_areas natural left join Offerings where eid = r.eid and EXTRACT('YEAR' FROM end_date) = current_year);
+		-- for each manager so initialize to 0 every loop
+		total_sum_from_credit_card := 0.00;
+		total_sum_from_redemption := 0.00;
+		highest_amount := -1;
+		highest_course_id := '{}';
+		highest_total_offering := '{}';
+		
+		raise notice '% %', total_num_of_course_areas_managed, total_number_of_course_offerings_ended_this_year;
+		OPEN curs2 FOR (SELECT * FROM (course_areas natural join Courses) AS C join Offerings O on C.course_id = O.course_id where C.eid = r1.eid and EXTRACT('YEAR' FROM end_date) = current_year);
 		LOOP
 			FETCH curs2 into r2;
 			EXIT WHEN NOT FOUND;
-			
 			SELECT count(*) into total_count_from_credit_card
-			from Register 
+			from Registers
 			where course_id = r2.course_id and launch_date = r2.launch_date;
-		
-			SELECT SUM(price/num_of_free_registrations)
-			from course_packages natural join Redeems
-			where course_id = r2.course_id and launch_date = r2.launch_date;
-			
-			total_sum_from_credit_card := total_sum_from_credit_card + total_count_from_credit_card * r.fees;
-			total_sum_from_redemption := total_sum_from_redemption + (SELECT SUM(price/num_of_free_registrations) from course_packages natural join Redeems where course_id = r2.course_id and launch_date = r2.launch_date);
+
+			total_sum_from_credit_card := total_sum_from_credit_card + total_count_from_credit_card * r2.fees;
+			total_sum_from_redemption := total_sum_from_redemption + (SELECT COALESCE(SUM(price/num_free_registrations),0) from course_packages natural join Redeems where course_id = r2.course_id and launch_date = r2.launch_date);
 			
 			IF (total_sum_from_credit_card + total_sum_from_redemption > highest_amount) THEN
 				highest_amount := total_sum_from_credit_card + total_sum_from_redemption;

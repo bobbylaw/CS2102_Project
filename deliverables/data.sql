@@ -60,7 +60,7 @@ INSERT INTO Rooms VALUES (2, 'Floor 1 Room 2', 30);
 INSERT INTO Rooms VALUES (3, 'Floor 2 Room 1', 30);
 INSERT INTO Rooms VALUES (4, 'Floor 2 Room 2', 30);
 
--- Course Offerings (There is 11 courses, 10 courses is offered every month, registration is a month before it start)
+-- Course Offerings (There is 11 courses, 10 courses is offered, registration is almost a month before it start)
 call add_course_offerings(7, 58.00, '2020-12-01', '2020-12-27', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
 call add_course_offerings(8, 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(2021-01-12, 16:00, 1)","(2021-01-14, 16:00, 1)","(2021-01-18, 16:00, 1)"}');
 call add_course_offerings(9, 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
@@ -83,3 +83,4 @@ CALL add_customer('Mada Sooper', '97 Esker Plaza', '(948) 3590358', 'msooper6@sm
 CALL add_customer('Darby Riddington', '9674 Arizona Way', '(986) 8008194', 'driddington7@spotify.com', '4041379536444', '2022-09-19', 172);
 CALL add_customer('Flory Alwell', '07 Ridge Oak Way', '(174) 1033142', 'falwell8@dell.com', '4017950159210', '2023-03-13', 213);
 CALL add_customer('Ax de Mendoza', '4421 Melvin Avenue', '(538) 9763902', 'ade9@cyberchimps.com', '4017952580157', '2022-11-15', 976);
+
