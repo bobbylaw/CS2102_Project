@@ -9,7 +9,6 @@ call add_employee ('Elbertine Orth', '6902 Bunting Hill', '(941) 6019839', 'eort
 call add_employee ('Ashlen Muslim', '47 Dapin Point', '(985) 9995566', 'amuslimb@icq.com', (2300, 'monthly'), '2020-10-05', 'administrator');
 call add_employee ('Karney Southers', '90661 Pennsylvania Circle', '(818) 1870846', 'ksouthersg@google.de', (2100, 'monthly'), '2020-10-16', 'administrator');
 call add_employee ('Matty Bimson', '29 Meadow Ridge Crossing', '(525) 8143351', 'mbimsone@nasa.gov', (2000, 'monthly'), '2020-12-21', 'administrator');
-call add_employee ('Dione Alvis', '67754 Thackeray Plaza', '(636) 3855284', 'dalvisf@ihg.com', (1800, 'monthly'), '2020-12-28', 'administrator');
 
 -- Employee Manager (10 rows)
 call add_employee ('Blake Rose', '5 Dexter Point', '(423) 9275303', 'brose5@bloglines.com', (2600,'monthly'), '2020-04-18', 'manager', '{Computer Science, Computer Engineering}');
@@ -54,23 +53,30 @@ call add_course ('Modern Technology in Medicine and Health', 'The course provide
 call add_course ('Ideas and Approaches in Design', 'This course provides and introduction to some of the basic concepts in and approaches to architecture as a practice and as an academic discipline.', 'Design and Environment', INTERVAL '4 hour');
 call add_course ('Chemical Engineering Principles', 'The core of the course covers the details of steady state material and energy balance, including recycle, purge, phase change and chemical reaction.', 'Chemical Engineering', INTERVAL '2 hour');
 
--- Rooms (Keep is simple with 2 floor and 2 rooms each, all can sit 30 person)
+-- Rooms
 INSERT INTO Rooms VALUES (1, 'Floor 1 Room 1', 30);
 INSERT INTO Rooms VALUES (2, 'Floor 1 Room 2', 30);
-INSERT INTO Rooms VALUES (3, 'Floor 2 Room 1', 30);
-INSERT INTO Rooms VALUES (4, 'Floor 2 Room 2', 30);
+INSERT INTO Rooms VALUES (3, 'Floor 1 Room 3', 30);
+INSERT INTO Rooms VALUES (4, 'Floor 1 Room 4', 30);
+INSERT INTO Rooms VALUES (5, 'Floor 1 Room 5', 30);
+INSERT INTO Rooms VALUES (6, 'Floor 2 Room 1', 30);
+INSERT INTO Rooms VALUES (7, 'Floor 2 Room 2', 30);
+INSERT INTO Rooms VALUES (8, 'Floor 2 Room 3', 30);
+INSERT INTO Rooms VALUES (9, 'Floor 2 Room 4', 30);
+INSERT INTO Rooms VALUES (10, 'Floor 2 Room 5', 30);
 
 -- Course Offerings (There is 11 courses, 10 courses is offered, registration is almost a month before it start)
-call add_course_offerings(7, 58.00, '2020-12-01', '2020-12-27', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
-call add_course_offerings(8, 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(2021-01-12, 16:00, 1)","(2021-01-14, 16:00, 1)","(2021-01-18, 16:00, 1)"}');
-call add_course_offerings(9, 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
-call add_course_offerings(10, 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
 call add_course_offerings(1, 68.00, '2021-04-01', '2021-04-30', 70, 1,  '{"(2021-05-10, 9:00, 1)","(2021-05-12, 9:00, 1)","(2021-05-14, 9:00, 1)"}'); 
 call add_course_offerings(2, 98.00, '2021-04-01', '2021-04-30', 50, 2,  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
 call add_course_offerings(3, 68.00, '2021-04-01', '2021-04-30', 80, 3,  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
 call add_course_offerings(4, 38.00, '2021-04-01', '2021-04-30', 80, 4,  '{"(2021-05-17, 14:00, 4)","(2021-05-19, 14:00, 4)","(2021-05-21, 14:00, 4)"}');
 call add_course_offerings(5, 48.00, '2021-04-01', '2021-04-30', 40, 5,  '{"(2021-05-17, 9:00, 1)","(2021-05-19, 9:00, 1)","(2021-05-21, 9:00, 1)"}');
 call add_course_offerings(6, 58.00, '2021-04-01', '2021-04-30', 60, 6,  '{"(2021-05-17, 14:00, 2)","(2021-05-19, 14:00, 2)","(2021-05-21, 14:00, 2)"}');
+call add_course_offerings(7, 58.00, '2020-12-01', '2020-12-27', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
+call add_course_offerings(8, 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(2021-01-12, 16:00, 1)","(2021-01-14, 16:00, 1)","(2021-01-18, 16:00, 1)"}');
+call add_course_offerings(9, 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
+call add_course_offerings(10, 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
+
 
 -- Customers
 CALL add_customer('Suzy Standrin', '61 Oriole Crossing', '(513) 9443136', 'sstandrin0@i2i.jp', '4041374696425943', '2023-01-15', 911);
@@ -84,3 +90,15 @@ CALL add_customer('Darby Riddington', '9674 Arizona Way', '(986) 8008194', 'drid
 CALL add_customer('Flory Alwell', '07 Ridge Oak Way', '(174) 1033142', 'falwell8@dell.com', '4017950159210', '2023-03-13', 213);
 CALL add_customer('Ax de Mendoza', '4421 Melvin Avenue', '(538) 9763902', 'ade9@cyberchimps.com', '4017952580157', '2022-11-15', 976);
 
+-- Sessions 
+-- SYNTAX: add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_eid INTEGER, IN input_rid INTEGER)
+call add_session(1, '2021-04-01', 1, '2021-04-15', '09:00:00', 21, 1);
+call add_session(2, '2021-04-01', 2, '2021-04-15', '14:00:00', 22, 2);
+call add_session(3, '2021-04-01', 3, '2021-04-15', '15:00:00', 28, 3);
+call add_session(4, '2021-04-01', 4, '2021-04-15', '17:00:00', 33, 4);
+call add_session(5, '2021-04-01', 5, '2021-04-15', '09:00:00', 27, 5);
+call add_session(6, '2021-04-01', 6, '2021-04-15', '10:00:00', 34, 6);
+call add_session(7, '2020-12-01', 7, '2020-12-15', '10:00:00', 26, 7);
+call add_session(8, '2020-12-01', 8, '2020-12-15', '14:00:00', 23, 8);
+call add_session(9, '2020-12-01', 9, '2020-12-15', '14:00:00', 32, 9);
+call add_session(10, '2020-12-01', 10, '2020-12-15', '14:00:00', 33, 10);
