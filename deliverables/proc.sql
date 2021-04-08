@@ -548,6 +548,7 @@ BEGIN
 	
 	INSERT INTO Offerings (course_id, launch_date, start_date, eid, end_date, registration_deadline, target_number_registrations, seating_capacity, fees) VALUES (_course_id, launch_date, first_session_date, administrator_id, last_session_date, registration_deadline, target_number_of_registration, total_seating_capacity, course_fees);
 	
+    ALTER SEQUENCE sessions_sid_seq RESTART;
 	FOREACH sessions in ARRAY session_info LOOP
 		session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = _course_id);
 		instructor_available := (SELECT eid FROM find_instructors(_course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1);
@@ -555,7 +556,6 @@ BEGIN
 		INSERT INTO Sessions(course_id, launch_date, course_area, rid, eid, session_date, start_time, end_time)
 		VALUES (_course_id, launch_date, course_area_of_instructor, (sessions).room_id, instructor_available, (sessions).session_date, (sessions).session_start_time, session_end_time);
 	END LOOP;
-	ALTER SEQUENCE sessions_sid_seq RESTART;
 END;
 $$ LANGUAGE plpgsql;
 
