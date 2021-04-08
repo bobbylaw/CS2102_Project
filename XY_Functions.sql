@@ -206,13 +206,20 @@ The inputs to the routine include the following: course offering identifier, new
 If the course offering’s registration deadline has not passed and the the addition request is valid, the routine will process the request with the necessary updates.
 */
 
-CREATE OR REPLACE PROCEDURE add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_eid INTEGER, IN input_rid INTEGER)
+CREATE OR REPLACE PROCEDURE add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
 AS $$
 DECLARE
     is_valid_session BOOLEAN;
     input_course_area TEXT;
     input_course_duration INTERVAL;
+    input_instructor_eid INTEGER;
 BEGIN
+    input_instructor_eid := (
+        SELECT eid
+        FROM Employees as e NATURAL JOIN Instructors as i
+        WHERE email = input_instructor_email
+    );
+
     is_valid_session := (
         SELECT input_session_day <= o.registration_deadline
         FROM Offerings as o

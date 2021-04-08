@@ -91,14 +91,14 @@ CALL add_customer('Flory Alwell', '07 Ridge Oak Way', '(174) 1033142', 'falwell8
 CALL add_customer('Ax de Mendoza', '4421 Melvin Avenue', '(538) 9763902', 'ade9@cyberchimps.com', '4017952580157', '2022-11-15', 976);
 
 -- Sessions 
--- SYNTAX: add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_eid INTEGER, IN input_rid INTEGER)
-call add_session(1, '2021-04-01', 1, '2021-04-15', '09:00:00', 21, 1);
-call add_session(2, '2021-04-01', 2, '2021-04-15', '14:00:00', 22, 2);
-call add_session(3, '2021-04-01', 3, '2021-04-15', '15:00:00', 28, 3);
-call add_session(4, '2021-04-01', 4, '2021-04-15', '17:00:00', 33, 4);
-call add_session(5, '2021-04-01', 5, '2021-04-15', '09:00:00', 27, 5);
-call add_session(6, '2021-04-01', 6, '2021-04-15', '10:00:00', 34, 6);
-call add_session(7, '2020-12-01', 7, '2020-12-15', '10:00:00', 26, 7);
-call add_session(8, '2020-12-01', 8, '2020-12-15', '14:00:00', 23, 8);
-call add_session(9, '2020-12-01', 9, '2020-12-15', '14:00:00', 32, 9);
-call add_session(10, '2020-12-01', 10, '2020-12-15', '14:00:00', 33, 10);
+-- SYNTAX: add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
+call add_session(1, '2021-04-01', 1, '2021-04-15', '09:00:00', 'cbindingw@marriott.com', 1);
+call add_session(2, '2021-04-01', 2, '2021-04-15', '14:00:00', 'ljewettm@dropbox.com', 2);
+call add_session(3, '2021-04-01', 3, '2021-04-15', '15:00:00', 'mglanfields@github.com', 3);
+call add_session(4, '2021-04-01', 4, '2021-04-15', '17:00:00', 'epinckneyy@cnbc.com', 4);
+call add_session(5, '2021-04-01', 5, '2021-04-15', '09:00:00', 'ariggeardr@instagram.com', 5);
+call add_session(6, '2021-04-01', 6, '2021-04-15', '10:00:00', 'cgregorowiczu@npr.org', 6);
+call add_session(7, '2020-12-01', 7, '2020-12-15', '10:00:00', 'hlep@bloglines.com', 7);
+call add_session(8, '2020-12-01', 8, '2020-12-15', '14:00:00', 'aphilpo@about.me', 8);
+call add_session(9, '2020-12-01', 9, '2020-12-15', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
+call add_session(10, '2020-12-01', 10, '2020-12-15', '14:00:00', 'epinckneyy@cnbc.com', 10);
