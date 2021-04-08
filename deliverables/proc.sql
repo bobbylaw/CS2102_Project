@@ -830,7 +830,7 @@ Things to note:
 CREATE OR REPLACE PROCEDURE register_sessions(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
 AS $$
 DECLARE
-    curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    curs refcursor;
     r RECORD;
     is_redeem INTEGER;
     is_register INTEGER;
@@ -855,7 +855,7 @@ BEGIN
         WHERE name = course_title
     );
 
-    OPEN curs;
+    OPEN curs FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
@@ -886,7 +886,7 @@ BEGIN
     IF payment_method = 'credit card' THEN -- insert into register table.
         INSERT INTO Registers VALUES (customer_cc_num, course_identifier, offering_launch_date, session_id, CURRENT_DATE);
     ELSIF payment_method = 'redemption' THEN -- insert into redeems table
-        OPEN curs;
+        OPEN curs FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
         LOOP
             FETCH curs INTO r;
             EXIT WHEN NOT FOUND;
