@@ -105,7 +105,7 @@ CALL add_customer('Flory Alwell', '07 Ridge Oak Way', '(174) 1033142', 'falwell8
 CALL add_customer('Ax de Mendoza', '4421 Melvin Avenue', '(538) 9763902', 'ade9@cyberchimps.com', '4017952580157', '2022-11-15', 976);
 
 -- Sessions 
--- SYNTAX: add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
+-- SYNTAX: add_session(IN input_course_title TEXT, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
 call add_session('Programming Methodology', '2021-04-01', 4, '2021-05-18', '09:00:00', 'cbindingw@marriott.com', 1);
 call add_session('Legal Environment of Business', '2021-04-01', 4, '2021-05-18', '14:00:00', 'ljewettm@dropbox.com', 2);
 call add_session('Computer Organization', '2021-04-01', 4, '2021-05-18', '15:00:00', 'mglanfields@github.com', 3);

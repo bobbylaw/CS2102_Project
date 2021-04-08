@@ -852,7 +852,7 @@ BEGIN
     course_identifier := (
         SELECT course_id
         FROM Courses
-        WHERE name = course_title
+        WHERE title = course_title
     );
 
     OPEN curs FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
