@@ -199,13 +199,13 @@ The inputs to the routine include the following: course identifier, session date
 The routine returns a table of records consisting of employee identifier and name.
 */
 
-CREATE OR REPLACE FUNCTION find_instructors(IN course_id1 INTEGER, IN session_date1 DATE, IN start_time1 TIME)
+CREATE OR REPLACE FUNCTION find_instructors(IN course_title TEXT, IN session_date1 DATE, IN start_time1 TIME)
 RETURNS TABLE(eid INT, name TEXT) AS $$
 DECLARE
-    curs CURSOR FOR (SELECT Employees.eid, Employees.name FROM Employees -- Instructors can teach course_id1 and avaliable on session_date1
+    curs CURSOR FOR (SELECT Employees.eid, Employees.name FROM Employees -- Instructors can teach course_title and avaliable on session_date1
         WHERE Employees.eid IN (
             SELECT Instructors.eid FROM Instructors
-                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.course_id = course_id1)
+                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.title = course_title)
         )
         AND Employees.depart_date IS NULL -- Meaning the employees is still in the company.
     );
@@ -215,7 +215,7 @@ DECLARE
 BEGIN
     SELECT duration INTO course_duration
     FROM Courses
-    WHERE Courses.course_id = course_id1;
+    WHERE Courses.title = course_title;
 
     OPEN curs;
     LOOP
@@ -254,13 +254,13 @@ So 12pm and 6pm is automatically not in the array.
 Eg. The course duration is 2 hours and the instructor has that course session from 4pm-6pm. It available hours are 9am and 10am.
 11 am is invalid because 11am-1pm is invalid. 2pm is invalid because 2pm-4pm clashes with 3pm-6pm. (include rest time)
 */
-CREATE OR REPLACE FUNCTION get_available_instructors(IN course_identifier INTEGER, IN start_date DATE, IN end_date DATE)
+CREATE OR REPLACE FUNCTION get_available_instructors(IN course_title TEXT, IN start_date DATE, IN end_date DATE)
 RETURNS TABLE(eid INTEGER, total_teaching_hours INTERVAL, month INTEGER, day INTEGER, available_hours TIME[]) AS $$ -- Or use [] for array?
 DECLARE
     curs CURSOR FOR (SELECT Employees.eid, Employees.name FROM Employees
         WHERE Employees.eid IN (
             SELECT Instructors.eid FROM Instructors
-                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.course_id = course_identifier)
+                WHERE Instructors.course_area = (SELECT Courses.name FROM Courses WHERE Courses.title = course_title)
         )
         ORDER BY eid ASC
     );
@@ -271,12 +271,15 @@ DECLARE
     total_teaching_hours_helper INTERVAL;
     available_hours_helper TIME[];
     course_duration INTERVAL;
+    course_identifier INTEGER;
 BEGIN
     start_date_helper := start_date;
     start_time_helper := '09:00:00';
     is_unavail := 0;
     total_teaching_hours_helper := INTERVAL '0 hour';
     available_hours_helper := '{}';
+
+    SELECT course_id INTO course_identifier FROM Courses WHERE Courses.title = course_title;
 
     SELECT duration INTO course_duration
     FROM Courses
@@ -291,7 +294,7 @@ BEGIN
 
             is_unavail := 0;
 
-            SELECT SUM(end_time - start_time) INTO total_teaching_hours_helper FROM Sessions
+            SELECT COALESCE(SUM(end_time - start_time), INTERVAL '0 hour') INTO total_teaching_hours_helper FROM Sessions
             WHERE Sessions.course_id = course_identifier
             AND Sessions.eid = r.eid
             AND EXTRACT(Month FROM start_date_helper) = EXTRACT(Month FROM Sessions.session_date);
@@ -1012,19 +1015,25 @@ Things to note:
 - A customer can owns multiple credit card. Hence we iterate through the credit cards and check which credit card
     the customer use to register/redeem the course session. 
 */
-CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE)
+CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE)
 AS $$
 DECLARE
-    curs1 CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    curs1 CURSOR FOR (SELECT card_number FROM Owns_credit_cards 
+        WHERE Owns_credit_cards.cust_id in (SELECT cust_id FROM Customers WHERE Customers.email = customer_email));
     r RECORD;
     is_redeem INTEGER;
     is_register INTEGER;
     course_offering_price NUMERIC(12,2);
     session_id INTEGER;
+    customer_id INTEGER;
+    course_identifier INTEGER;
 BEGIN
     is_redeem := 0;
     is_register := 0;
     course_offering_price := 0;
+
+    SELECT cust_id INTO customer_id FROM Customers WHERE Customers.email = customer_email;
+    SELECT course_id INTO course_identifier FROM Courses WHERE Courses.title = course_title;
 
     SELECT fees INTO course_offering_price -- Get the price of the course session/offerings. Its the same.
     FROM Offerings
@@ -1091,14 +1100,16 @@ Things to note:
 The way we interpret the update request is valid is if the instructor are able to teach the course session assign to him.
 So, there shouldn't be a clash of session timing taught by the instructor after the update. 
 */
-CREATE OR REPLACE PROCEDURE update_instructor(IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, IN new_eid INTEGER)
+CREATE OR REPLACE PROCEDURE update_instructor(IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, IN new_eid INTEGER)
 AS $$
 DECLARE
     course_session_start_time TIME;
     course_session_date DATE;
     course_duration INTERVAL;
     is_invalid_update INTEGER;
+    course_identifier INTEGER;
 BEGIN
+    SELECT course_id INTO course_identifier FROM Courses WHERE Courses.title = course_title;
     is_invalid_update := 0;
 
     SELECT start_time INTO course_session_start_time
@@ -1124,7 +1135,7 @@ BEGIN
     AND (course_session_start_time, course_session_start_time + course_duration) OVERLAPS
         (Sessions.start_time - INTERVAL '1 hour', Sessions.end_time + INTERVAL '1 hour');
 	
-    IF (CURRENT_TIME < course_session_start_time) AND (CURRENT_DATE <= course_session_date) 
+    IF ((CURRENT_DATE < course_session_date) OR ((CURRENT_TIME < course_session_start_time) AND (CURRENT_DATE = course_session_date)))
         AND (is_invalid_update = 0) THEN
             UPDATE Sessions
             SET eid = new_eid
@@ -1152,7 +1163,7 @@ Things to note:
     from their course_package.
 - A customer can only register or redeems a session from a course offering.
 */
-CREATE OR REPLACE PROCEDURE update_room(IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, IN new_rid INTEGER)
+CREATE OR REPLACE PROCEDURE update_room(IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, IN new_rid INTEGER)
 AS $$
 DECLARE
     course_session_start_time TIME;
@@ -1160,7 +1171,10 @@ DECLARE
     new_room_seating_capacity INTEGER;
     num_of_registration INTEGER;
     num_of_redemption INTEGER;
+    course_identifier INTEGER;
 BEGIN
+    SELECT course_id INTO course_identifier FROM Courses WHERE Courses.title = course_title;
+
     SELECT start_time INTO course_session_start_time
     FROM Sessions
     WHERE Sessions.course_id = course_identifier
@@ -1189,7 +1203,7 @@ BEGIN
     AND Redeems.launch_date = offering_launch_date
     AND Redeems.sid = session_id;
 
-    IF (CURRENT_DATE <= course_session_date) AND (CURRENT_TIME < course_session_start_time)
+    IF ((CURRENT_DATE < course_session_date) OR ((CURRENT_TIME < course_session_start_time) AND (CURRENT_DATE = course_session_date)))
         AND ((num_of_registration + num_of_redemption) <= new_room_seating_capacity) THEN
             UPDATE Sessions
             SET rid = new_rid
@@ -1674,6 +1688,13 @@ The input to the routine is a number of months (say N) and the routine returns a
 For example, if the number of specified months is 3 and the current month is January 2021, the output will consist of one record for each of the following three months: January 2021, December 2020, and November 2020.
 */
 
+/*
+Things to note:
+For our implementation, our total_registration_fees represent those registrations that is NOT CANCELLED.
+ALL CANCELLED registration will be not present in the register table because they has been cancelled.
+So it is possible that the refund_amt > total_registration_fees. This doesn't mean that the company lose money.
+Because for every record present in the cancellation (cancelled from register), the company earns the 10% course fees.
+*/
 CREATE OR REPLACE FUNCTION view_summary_report(IN num_of_months INTEGER)
 RETURNS TABLE(year INTEGER, month INTEGER, total_salary_paid NUMERIC(12,2), total_sales NUMERIC(12,2), 
     total_registration_fees NUMERIC(12,2), refund_amount NUMERIC(12,2), num_of_redemption INTEGER) AS $$
@@ -1842,7 +1863,7 @@ END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER NO_SESS_SAME_CSE_SAME_DAY_AND_TIME_TRIGGER
-BEFORE INSERT OR UPDATE ON Sessions
+BEFORE INSERT ON Sessions
 FOR EACH ROW EXECUTE FUNCTION NO_SESS_SAME_CSE_SAME_DAY_AND_TIME();
 
 /* ============================================================================================================ */
@@ -2170,7 +2191,7 @@ $$
 LANGUAGE plpgsql;
 
 CREATE TRIGGER check_instructor_overlap_session
-BEFORE INSERT OR UPDATE
+BEFORE INSERT
 ON Sessions
 FOR EACH ROW
 EXECUTE FUNCTION check_instructor_overlap_session_func();
@@ -2397,7 +2418,7 @@ $$
 LANGUAGE plpgsql;
 
 CREATE TRIGGER check_consec_course_session
-BEFORE INSERT OR UPDATE
+BEFORE INSERT
 ON Sessions
 FOR EACH ROW
 EXECUTE FUNCTION check_consec_course_session_func();
