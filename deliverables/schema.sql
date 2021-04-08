@@ -30,7 +30,7 @@ CREATE TABLE Employees (
 CREATE TABLE Pay_slips (
     eid INTEGER,
     payment_date DATE,
-    amount INTEGER,
+    amount NUMERIC(12,2),
     num_work_hours INTEGER,
     num_work_days INTEGER,
     PRIMARY KEY(eid, payment_date), -- Weak entity set

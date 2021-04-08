@@ -552,7 +552,7 @@ BEGIN
 			RAISE EXCEPTION 'OPERATION FAILED: Session start time must be before end time';
 		END IF;
 		
-		instructor_available := (SELECT eid FROM find_instructors(_course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1); -- check if there is at least 1 instructor available
+		instructor_available := (SELECT eid FROM find_instructors(course_title, (sessions).session_date, (sessions).session_start_time) LIMIT 1); -- check if there is at least 1 instructor available
 		IF instructor_available ISNULL THEN
 			RAISE EXCEPTION 'OPERATION FAILED: Unable to find instructor for Session date % of Course ID: % launching on  %', (sessions).session_date, _course_id, launch_date;
 		END IF;
@@ -563,7 +563,7 @@ BEGIN
     ALTER SEQUENCE sessions_sid_seq RESTART;
 	FOREACH sessions in ARRAY session_info LOOP
 		session_end_time := (sessions).session_start_time + (SELECT duration FROM Courses C WHERE C.course_id = _course_id);
-		instructor_available := (SELECT eid FROM find_instructors(_course_id, (sessions).session_date, (sessions).session_start_time) LIMIT 1);
+		instructor_available := (SELECT eid FROM find_instructors(course_title, (sessions).session_date, (sessions).session_start_time) LIMIT 1);
 		course_area_of_instructor := (SELECT name FROM Courses C WHERE C.course_id = _course_id);
 		INSERT INTO Sessions(course_id, launch_date, course_area, rid, eid, session_date, start_time, end_time)
 		VALUES (_course_id, launch_date, course_area_of_instructor, (sessions).room_id, instructor_available, (sessions).session_date, (sessions).session_start_time, session_end_time);
@@ -1071,7 +1071,9 @@ BEGIN
             LIMIT 1;
 
             INSERT INTO Cancels
-            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1); 
+            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1);
+			CLOSE curs1;
+			RETURN;
 
         ELSIF (is_register > 0) THEN
             SELECT sid INTO session_id
@@ -1084,9 +1086,12 @@ BEGIN
 
             INSERT INTO Cancels
             VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
+			CLOSE curs1;
+			RETURN;
         END IF;
     END LOOP;
-    CLOSE curs1;
+	CLOSE curs1;
+	RAISE EXCEPTION 'There is no such course registrations';
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1358,7 +1363,7 @@ For a full-time employees, the values for number of work hours for the month and
 CREATE OR REPLACE FUNCTION pay_salary()
 RETURNS TABLE(employee_id INTEGER, employee_name TEXT, status TEXT, num_work_days INTEGER, num_work_hours INTEGER, hourly_rate INTEGER, monthly_salary INTEGER, salary_amount_paid NUMERIC(5,2)) AS $$
 DECLARE
-	curs CURSOR FOR (SELECT * FROM employees natural join full_time_emp union SELECT * FROM employees natural join part_time_emp);
+	curs CURSOR FOR (SELECT * FROM employees natural join full_time_emp where depart_date ISNULL) union (SELECT * FROM employees natural join part_time_emp where depart_date ISNULL);
 	start_of_month DATE;
 	end_of_month DATE;
 	days_in_month INTEGER;
@@ -1391,10 +1396,10 @@ BEGIN
 		ELSIF (r.monthly_salary).rate = 'hourly' THEN
 			status := 'part-time';
 			num_work_days := NULL;
-			num_work_hours := (SELECT SUM(EXTRACT('hours' FROM (end_time - start_time))) FROM Sessions S WHERE S.eid = r.eid AND S.session_date BETWEEN start_of_month AND end_of_month);
+			num_work_hours := (SELECT SUM(EXTRACT('hours' FROM (end_time - start_time))) FROM Sessions S WHERE S.eid = r.eid AND S.session_date BETWEEN start_of_month and end_of_month);
 			num_work_hours := COALESCE(num_work_hours, 0);
 			hourly_rate := (r.monthly_salary).salary;
-			salary_amount_paid := COALESCE((num_work_hours * (r.monthly_salary).salary),0);
+			salary_amount_paid := COALESCE((num_work_hours * (r.monthly_salary).salary),0)::NUMERIC(12,2);
 		END IF;
 		RETURN NEXT;
 		INSERT INTO Pay_slips (eid, payment_date, amount, num_work_hours, num_work_days) VALUES (employee_id, CURRENT_DATE, salary_amount_paid, num_work_hours, num_work_days);
@@ -1427,8 +1432,12 @@ CREATE OR REPLACE FUNCTION promote_courses()
 RETURNS TABLE(customer_id INTEGER, customer_name TEXT, course_area TEXT, _course_id INTEGER, course_title TEXT, course_launch_date DATE, course_registration_deadline DATE, course_fees NUMERIC(12,2)) AS $$
 DECLARE
 	curs1 CURSOR FOR (SELECT DISTINCT ON (cust_id) *
-			FROM Customers natural join Owns_credit_cards natural left join Registers
-            WHERE CURRENT_DATE - registration_date >= 180
+			FROM Customers natural join Owns_credit_cards natural left join (SELECT card_number, course_id, launch_date, registration_date 
+																			 FROM Registers 
+																			 UNION 
+																			 SELECT card_number, course_id, launch_date, redemption_date 
+																			 FROM Redeems) AS R
+			WHERE CURRENT_DATE - registration_date >= 180
 			ORDER BY cust_id);
 	r1 RECORD;
 	
@@ -1442,7 +1451,10 @@ BEGIN
 		--check if customer register before
 		IF r1.registration_date ISNULL THEN
 			-- get all offering available since customer has never register before and all area is of interest
-			OPEN curs2 FOR (SELECT course_id, launch_date, registration_deadline, fees FROM Offerings O WHERE registration_deadline - CURRENT_DATE > 0 ORDER BY registration_deadline ASC);
+			OPEN curs2 FOR (SELECT course_id, launch_date, registration_deadline, fees 
+							FROM Offerings O 
+							WHERE registration_deadline - CURRENT_DATE >= 0
+							ORDER BY registration_deadline ASC);
 			LOOP
 				FETCH curs2 into r2;
 				EXIT WHEN NOT FOUND;
@@ -1459,7 +1471,15 @@ BEGIN
 			CLOSE curs2;
 		ELSE
 			--get three latest course registration for each inactive customer, foreach course_area, find the offering available
-			OPEN curs2 FOR (SELECT * FROM Offerings O natural join (SELECT C.name, R.course_id, title FROM Registers R natural join Courses C WHERE R.card_number = r1.card_number LIMIT 3) AS R WHERE registration_deadline - CURRENT_DATE > 0 ORDER BY registration_deadline ASC);
+			OPEN curs2 FOR (SELECT * FROM Offerings O natural join (SELECT name, course_id, title FROM (select card_number, course_id, launch_date, registration_date 
+																										from Registers 
+																										union 
+																										select card_number, course_id, launch_date, redemption_date 
+																										from Redeems) AS R 
+																										natural join Courses 
+																										WHERE R.card_number = r1.card_number 
+																										LIMIT 3) AS C 
+							WHERE O.registration_deadline - CURRENT_DATE >= 0 ORDER BY registration_deadline ASC);
 			LOOP
 				FETCH curs2 into r2;
 				EXIT WHEN NOT FOUND;
@@ -1778,6 +1798,8 @@ DECLARE
 	total_count_from_credit_card INTEGER;
 	total_sum_from_credit_card NUMERIC;
 	total_sum_from_redemption NUMERIC;
+	current_sum_from_credit_card NUMERIC;
+	current_sum_from_redemption NUMERIC;
 	highest_amount NUMERIC;
 	highest_course_id INTEGER[];
 	temp_course_id INTEGER;
@@ -1804,19 +1826,25 @@ BEGIN
 		LOOP
 			FETCH curs2 into r2;
 			EXIT WHEN NOT FOUND;
+			current_sum_from_credit_card := 0.00;
+			current_sum_from_redemption := 0.00;
 			SELECT count(*) into total_count_from_credit_card
 			from Registers
 			where course_id = r2.course_id and launch_date = r2.launch_date;
 
-			total_sum_from_credit_card := total_sum_from_credit_card + total_count_from_credit_card * r2.fees;
-			total_sum_from_redemption := total_sum_from_redemption + (SELECT COALESCE(SUM(price/num_free_registrations),0) from course_packages natural join Redeems where course_id = r2.course_id and launch_date = r2.launch_date);
 			
-			IF (total_sum_from_credit_card + total_sum_from_redemption > highest_amount) THEN
-				highest_amount := total_sum_from_credit_card + total_sum_from_redemption;
+			current_sum_from_credit_card := total_count_from_credit_card * r2.fees;
+			current_sum_from_redemption := ROUND((SELECT COALESCE(SUM(price/num_free_registrations),0) from course_packages natural join Redeems where course_id = r2.course_id and launch_date = r2.launch_date),2);
+			
+			IF (current_sum_from_credit_card + current_sum_from_redemption > highest_amount) THEN
+				highest_amount := current_sum_from_credit_card + current_sum_from_redemption;
 				highest_course_id := array_append(NULL,r2.course_id);
-			ELSIF (total_sum_from_credit_card + total_sum_from_redemption = highest_amount) THEN
+			ELSIF (current_sum_from_credit_card + current_sum_from_redemption = highest_amount) THEN
 				highest_course_id := array_append(highest_course_id,r2.course_id);
 			END IF;
+			
+			total_sum_from_credit_card = total_sum_from_credit_card + current_sum_from_credit_card;
+			total_sum_from_redemption = total_sum_from_redemption + current_sum_from_redemption;
 		END LOOP;
 		close curs2;
 		
@@ -2649,3 +2677,60 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER ROOM_AVAIL_TRIGGER
 BEFORE INSERT ON Sessions
 FOR EACH ROW EXECUTE FUNCTION ROOM_AVAIL();	     
+
+/* ============================================================================================================ */
+
+/*Each course offering has a start date and an end date that is determined by the dates of its earliest and latest sessions, respectively.*/
+CREATE OR REPLACE FUNCTION update_offering_start_end_date()
+RETURNS TRIGGER AS $$
+DECLARE
+	first_session_date DATE;
+	last_session_date DATE;
+BEGIN
+	IF (TG_OP = 'DELETE') THEN
+	
+		SELECT session_date INTO first_session_date
+		FROM Sessions S
+		WHERE S.course_id = OLD.course_id AND launch_date = OLD.launch_date
+		ORDER BY session_date
+		LIMIT 1;
+		
+		SELECT session_date INTO last_session_date
+		FROM Sessions S
+		WHERE S.course_id = OLD.course_id AND launch_date = OLD.launch_date
+		ORDER BY session_date DESC
+		LIMIT 1;
+		
+		UPDATE Offerings 
+		SET start_date = first_session_date, end_date = last_session_date
+		WHERE course_id = OLD.course_id
+		AND launch_date = OLD.launch_date;
+		
+		RETURN NEW;
+	ELSE
+		SELECT session_date INTO first_session_date
+		FROM Sessions S
+		WHERE S.course_id = NEW.course_id AND launch_date = NEW.launch_date
+		ORDER BY session_date
+		LIMIT 1;
+		
+		SELECT session_date INTO last_session_date
+		FROM Sessions S
+		WHERE S.course_id = NEW.course_id AND launch_date = NEW.launch_date
+		ORDER BY session_date DESC
+		LIMIT 1;
+		
+		UPDATE Offerings 
+		SET start_date = first_session_date, end_date = last_session_date
+		WHERE course_id = NEW.course_id
+		AND launch_date = NEW.launch_date;
+		
+		RETURN NEW;
+	END IF;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_offering_start_end_date
+AFTER INSERT OR UPDATE OR DELETE ON Sessions
+FOR EACH ROW
+EXECUTE FUNCTION update_offering_start_end_date();
