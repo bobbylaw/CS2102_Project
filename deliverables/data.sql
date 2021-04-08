@@ -70,15 +70,15 @@ INSERT INTO Rooms VALUES (10, 'Floor 2 Room 5', 30);
 -- Course Offerings (There is 11 courses, 10 courses is offered, registration is almost a month before it start)
 -- SYNTAX: add_course_offerings (IN course_title TEXT, IN course_fees NUMERIC(12,2), IN launch_date DATE, IN registration_deadline DATE, IN target_number_of_registration INTEGER, IN administrator_email TEXT, IN session_info SESSION_INFORMATION[])
 call add_course_offerings('Programming Methodology', 68.00, '2021-04-01', '2021-04-30', 70, 'bdouglassj@wired.com',  '{"(2021-05-10, 9:00, 1)","(2021-05-12, 9:00, 1)","(2021-05-14, 9:00, 1)"}'); 
-call add_course_offerings('Legal Environment of Business', 98.00, '2021-04-01', '2021-04-30', 50, 2,  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
-call add_course_offerings('Computer Organization', 68.00, '2021-04-01', '2021-04-30', 80, 3,  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
-call add_course_offerings('Science of Music', 38.00, '2021-04-01', '2021-04-30', 80, 4,  '{"(2021-05-17, 14:00, 4)","(2021-05-19, 14:00, 4)","(2021-05-21, 14:00, 4)"}');
-call add_course_offerings('Signals and Systems', 48.00, '2021-04-01', '2021-04-30', 40, 5,  '{"(2021-05-17, 9:00, 1)","(2021-05-19, 9:00, 1)","(2021-05-21, 9:00, 1)"}');
-call add_course_offerings('Singapore Employment Law', 58.00, '2021-04-01', '2021-04-30', 60, 6,  '{"(2021-05-17, 14:00, 2)","(2021-05-19, 14:00, 2)","(2021-05-21, 14:00, 2)"}');
-call add_course_offerings('Financial Accounting', 58.00, '2020-12-01', '2020-12-27', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
-call add_course_offerings('General Biology', 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(2021-01-12, 16:00, 1)","(2021-01-14, 16:00, 1)","(2021-01-18, 16:00, 1)"}');
-call add_course_offerings('Modern Technology in Medicine and Health', 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
-call add_course_offerings('Chemical Engineering Principles', 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
+call add_course_offerings('Legal Environment of Business', 98.00, '2021-04-01', '2021-04-30', 50, 'jwimpeneyh@delicious.com',  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
+call add_course_offerings('Computer Organization', 68.00, '2021-04-01', '2021-04-30', 80, 'zbugged@tinypic.com',  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
+call add_course_offerings('Science of Music', 38.00, '2021-04-01', '2021-04-30', 80, 'arobilliardi@tamu.edu',  '{"(2021-05-17, 14:00, 4)","(2021-05-19, 14:00, 4)","(2021-05-21, 14:00, 4)"}');
+call add_course_offerings('Signals and Systems', 48.00, '2021-04-01', '2021-04-30', 40, 'iwhittera@fema.gov',  '{"(2021-05-17, 9:00, 5)","(2021-05-19, 9:00, 5)","(2021-05-21, 9:00, 5)"}');
+call add_course_offerings('Singapore Employment Law', 58.00, '2021-04-01', '2021-04-30', 60, 'obloxlandc@home.pl',  '{"(2021-05-17, 14:00, 6)","(2021-05-19, 14:00, 6)","(2021-05-21, 14:00, 6)"}');
+call add_course_offerings('Financial Accounting', 58.00, '2020-12-01', '2020-12-27', 60, 'eorthk@globo.com',  '{"(2021-01-12, 9:00, 7)","(2021-01-14, 9:00, 7)","(2021-01-18, 9:00, 7)"}');
+call add_course_offerings('General Biology', 108.00, '2020-12-01', '2020-12-27', 50, 'amuslimb@icq.com',  '{"(2021-01-12, 16:00, 8)","(2021-01-14, 16:00, 8)","(2021-01-18, 16:00, 8)"}');
+call add_course_offerings('Modern Technology in Medicine and Health', 88.00, '2020-12-01', '2020-12-27', 70, 'ksouthersg@google.de',  '{"(2021-01-19, 9:00, 9)","(2021-01-20, 9:00, 9)","(2021-01-21, 9:00, 9)"}');
+call add_course_offerings('Chemical Engineering Principles', 78.00, '2020-12-01', '2020-12-31', 80, 'mbimsone@nasa.gov',  '{"(2021-01-19, 14:00, 10)","(2021-01-20, 14:00, 10)","(2021-01-21, 14:00, 10)"}');
 
 -- Customers
 -- SYNTAX: add_customer(IN input_cust_name TEXT, IN input_address TEXT, IN input_phone TEXT, IN input_email TEXT, IN input_card_number TEXT, IN input_expiry_date DATE, IN input_CVV INTEGER)
