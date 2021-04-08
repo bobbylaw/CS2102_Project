@@ -906,11 +906,6 @@ BEGIN
 
             IF redeem_package_id <> 0 THEN
                 INSERT INTO Redeems VALUES (r.card_number, redeem_package_id, package_purchase_date, course_identifier, offering_launch_date, session_id, CURRENT_DATE);
-
-                UPDATE Buys SET num_of_redemption = num_of_redemption - 1
-                WHERE card_number = r.card_number
-                AND package_id = redeem_package_id
-                AND purchase_date = package_purchase_date;
             END IF;
         END LOOP;
     ELSE

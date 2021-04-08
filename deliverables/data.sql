@@ -160,3 +160,52 @@ call buy_course_package('ade9@cyberchimps.com', 'pkg-04');
 call buy_course_package('driddington7@spotify.com', 'pkg-06');
 call buy_course_package('msooper6@smugmug.com', 'pkg-07');
 call buy_course_package('achapman5@yelp.com', 'pkg-03');
+
+--Redeems
+--SYNTAX: register_sessions(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
+call register_sessions('sstandrin0@i2i.jp', 'Computer Organization', '2021-04-01', 2, 'redemption');
+call register_sessions('sstandrin0@i2i.jp', 'Legal Environment of Business', '2021-04-01', 2, 'redemption');
+call register_sessions('sstandrin0@i2i.jp', 'Science of Music', '2021-04-01', 1, 'redemption');
+call register_sessions('fagastina1@guardian.co.uk', 'Programming Methodology', '2021-04-01', 2, 'redemption');
+call register_sessions('fagastina1@guardian.co.uk', 'Computer Organization', '2021-04-01', 1, 'redemption');
+call register_sessions('fagastina1@guardian.co.uk', 'Science of Music', '2021-04-01', 1, 'redemption');
+call register_sessions('mdabbs2@wp.com', 'Programming Methodology', '2021-04-01', 3, 'redemption');
+call register_sessions('mdabbs2@wp.com', 'Legal Environment of Business', '2021-04-01', 1, 'redemption');
+call register_sessions('mdabbs2@wp.com', 'Science of Music', '2021-04-01', 1, 'redemption');
+call register_sessions('iottewell3@moonfruit.com', 'Programming Methodology', '2021-04-01', 2, 'redemption');
+call register_sessions('iottewell3@moonfruit.com', 'Computer Organization', '2021-04-01', 2, 'redemption');
+call register_sessions('iottewell3@moonfruit.com', 'Legal Environment of Business', '2021-04-01', 1, 'redemption');
+
+--Cancels
+--SYNTAX: cancel_registration(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE)
+call cancel_registration('sstandrin0@i2i.jp', 'Computer Organization', '2021-04-01');
+call register_sessions('sstandrin0@i2i.jp', 'Computer Organization', '2021-04-01', 2, 'redemption'); -- Add back to redeem
+call cancel_registration('sstandrin0@i2i.jp', 'Legal Environment of Business', '2021-04-01');
+call register_sessions('sstandrin0@i2i.jp', 'Legal Environment of Business', '2021-04-01', 2, 'redemption');
+call cancel_registration('sstandrin0@i2i.jp', 'Science of Music', '2021-04-01');
+call register_sessions('sstandrin0@i2i.jp', 'Science of Music', '2021-04-01', 1, 'redemption');
+call cancel_registration('fagastina1@guardian.co.uk', 'Programming Methodology', '2021-04-01');
+call register_sessions('fagastina1@guardian.co.uk', 'Programming Methodology', '2021-04-01', 2, 'redemption');
+call cancel_registration('fagastina1@guardian.co.uk', 'Computer Organization', '2021-04-01');
+call register_sessions('fagastina1@guardian.co.uk', 'Computer Organization', '2021-04-01', 1, 'redemption');
+call cancel_registration('fagastina1@guardian.co.uk', 'Science of Music', '2021-04-01');
+call register_sessions('fagastina1@guardian.co.uk', 'Science of Music', '2021-04-01', 1, 'redemption');
+
+call cancel_registration('sstandrin0@i2i.jp', 'Programming Methodology', '2021-04-01');
+call register_sessions('sstandrin0@i2i.jp', 'Programming Methodology', '2021-04-01', 1, 'credit card'); -- Add back register
+call cancel_registration('fagastina1@guardian.co.uk', 'Legal Environment of Business', '2021-04-01');
+call register_sessions('fagastina1@guardian.co.uk', 'Legal Environment of Business', '2021-04-01', 1, 'credit card');
+call cancel_registration('mdabbs2@wp.com', 'Computer Organization', '2021-04-01');
+call register_sessions('mdabbs2@wp.com', 'Computer Organization', '2021-04-01', 1, 'credit card');
+call cancel_registration('iottewell3@moonfruit.com', 'Science of Music', '2021-04-01');
+call register_sessions('iottewell3@moonfruit.com', 'Science of Music', '2021-04-01', 1, 'credit card');
+call cancel_registration('atruscott4@forbes.com', 'Signals and Systems', '2021-04-01');
+call register_sessions('atruscott4@forbes.com', 'Signals and Systems', '2021-04-01', 1, 'credit card');
+call cancel_registration('achapman5@yelp.com', 'Singapore Employment Law', '2021-04-01');
+call register_sessions('achapman5@yelp.com', 'Singapore Employment Law', '2021-04-01', 1, 'credit card');
+
+call cancel_registration('msooper6@smugmug.com', 'Programming Methodology', '2021-04-01'); -- cancels register
+call register_sessions('msooper6@smugmug.com', 'Programming Methodology', '2021-04-01', 1, 'redemption'); -- redeem same course offering
+call cancel_registration('msooper6@smugmug.com', 'Programming Methodology', '2021-04-01'); -- cancel the course offering which just redeem
+call register_sessions('msooper6@smugmug.com', 'Programming Methodology', '2021-04-01', 1, 'credit card'); -- add back register.
+-- Both refund_amt and package_credit is credited under same record.
