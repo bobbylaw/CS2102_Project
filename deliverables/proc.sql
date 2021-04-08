@@ -137,10 +137,19 @@ CREATE OR REPLACE PROCEDURE add_customer(IN input_cust_name TEXT, IN input_addre
 AS $$
 DECLARE
     customer_id INTEGER;
+    cust_exists BOOLEAN;
 BEGIN
 
-    INSERT INTO Customers(name, address, phone, email)
-        VALUES (input_cust_name, input_address, input_phone, input_email);
+    cust_exists := (
+        SELECT COUNT(*)
+        FROM Customers
+        WHERE email = input_email
+    ) > 0;
+
+    IF (NOT cust_exists) THEN
+        INSERT INTO Customers(name, address, phone, email)
+            VALUES (input_cust_name, input_address, input_phone, input_email);
+    END IF;
 
     SELECT c.cust_id into customer_id
         FROM Customers as c
@@ -716,22 +725,21 @@ BEGIN
     AND num_of_redemption > 0 
     OR (num_of_redemption = 0 AND EXISTS (
                                     SELECT 1 
-									FROM Owns_credit_cards NATURAL JOIN Redeems NATURAL JOIN Sessions  
+				    FROM Owns_credit_cards NATURAL JOIN Redeems NATURAL JOIN Sessions  
                                     WHERE Owns_credit_cards.cust_id = customer_id
                                     AND Sessions.session_date - CAST(NOW() AS DATE) >= 7));
 RETURN query(
     select jsonb_build_object(
-	    'package name', package_name, 'number of free sessions', num_free_sessions, 'number of sessions left', num_unredeem_sessions, 
+	'package name', package_name, 'number of free sessions', num_free_sessions, 'number of sessions left', num_unredeem_sessions, 
         'info of redeemed sessions' , 
-        (SELECT COALESCE(jsonb_agg(jsonb_build_object('course name', C.name, 'session date', S.session_date, 'start time', S.start_time)) , '[]')
-		    FROM Redeems AS R NATURAL JOIN Courses AS C NATURAL JOIN Sessions AS S NATURAL JOIN Owns_credit_cards AS O
+           (SELECT COALESCE(jsonb_agg(jsonb_build_object('course name', C.name, 'session date', S.session_date, 'start time', S.start_time)) , '[]')
+	    FROM Redeems AS R NATURAL JOIN Courses AS C NATURAL JOIN Sessions AS S NATURAL JOIN Owns_credit_cards AS O
             WHERE O.cust_id = customer_id 
             AND R.package_id = pid
             AND R.purchase_date = date_of_purchase
             AND C.course_id = R.course_id
             GROUP BY S.session_date, S.start_time
-            ORDER BY S.session_date, S.start_time ASC
-        )
+            ORDER BY S.session_date, S.start_time ASC)
 	) AS json_obj);
 	
 END;
@@ -929,7 +937,7 @@ AS $$
 BEGIN
 
     RETURN query (
-        SELECT cse_name as course_name, COALESCE(o.fees, 0) as course_fees, s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, COALESCE(EXTRACT(minutes from (s.end_time - s.start_time)), 0) as session_duration, ename as instructor_name
+        SELECT cse_name as course_name, COALESCE(o.fees, 0) as course_fees, s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, COALESCE(EXTRACT(HOURS from (s.end_time - s.start_time)), 0) as session_duration, ename as instructor_name
         FROM Customers as c NATURAL FULL JOIN Owns_credit_cards as occ NATURAL FULL JOIN Buys as b NATURAL FULL JOIN Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity, fees, end_date FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN (SELECT eid, name as ename FROM Employees) as e NATURAL FULL JOIN (SELECT course_id, name as cse_name FROM Courses) as cse
         WHERE cust_email = c.email 
             AND now() <= o.end_date -- not ended condition
@@ -962,8 +970,8 @@ BEGIN
         WHERE title = input_course_title
     );
 
-    avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
-                        FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
+    avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number) - COUNT(re.redemption_date)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
+                        FROM registers as r NATURAL FULL JOIN Redeems as re NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
                         GROUP BY o.seating_capacity, course_id, launch_date, sid
                         HAVING input_course_id = course_id AND 
                             input_launch_date = launch_date AND
@@ -1253,7 +1261,7 @@ BEGIN
     );
 
     IF (num_registration <> 0 OR num_redemption <> 0) THEN
-        RAISE EXCEPTION 'There are existing registrations for this session!';
+        RAISE EXCEPTION 'There are existing registrations or redemptions for this session!';
     END IF;
 
     has_started := (
@@ -1903,7 +1911,7 @@ END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER AT_MOST_ONE_REG_BEFORE_DEADLINE_PER_CUSTOMER_TRIGGER
-BEFORE INSERT OR UPDATE ON Registers
+BEFORE INSERT ON Registers
 FOR EACH ROW EXECUTE FUNCTION AT_MOST_ONE_REG_BEFORE_DEADLINE_PER_CUSTOMER();
 
 /* ============================================================================================================ */

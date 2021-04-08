@@ -8,10 +8,19 @@ CREATE OR REPLACE PROCEDURE add_customer(IN input_cust_name TEXT, IN input_addre
 AS $$
 DECLARE
     customer_id INTEGER;
+    cust_exists BOOLEAN;
 BEGIN
 
-    INSERT INTO Customers(name, address, phone, email)
-        VALUES (input_cust_name, input_address, input_phone, input_email);
+    cust_exists := (
+        SELECT COUNT(*)
+        FROM Customers
+        WHERE email = input_email
+    ) > 0;
+
+    IF (NOT cust_exists) THEN
+        INSERT INTO Customers(name, address, phone, email)
+            VALUES (input_cust_name, input_address, input_phone, input_email);
+    END IF;
 
     SELECT c.cust_id into customer_id
         FROM Customers as c
@@ -92,7 +101,7 @@ AS $$
 BEGIN
 
     RETURN query (
-        SELECT cse_name as course_name, COALESCE(o.fees, 0) as course_fees, s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, COALESCE(EXTRACT(minutes from (s.end_time - s.start_time)), 0) as session_duration, ename as instructor_name
+        SELECT cse_name as course_name, COALESCE(o.fees, 0) as course_fees, s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, COALESCE(EXTRACT(HOURS from (s.end_time - s.start_time)), 0) as session_duration, ename as instructor_name
         FROM Customers as c NATURAL FULL JOIN Owns_credit_cards as occ NATURAL FULL JOIN Buys as b NATURAL FULL JOIN Registers as r NATURAL FULL JOIN Sessions as s NATURAL FULL JOIN (SELECT course_id, launch_date, start_date, seating_capacity, fees, end_date FROM Offerings) as o NATURAL FULL JOIN Instructors as i NATURAL FULL JOIN (SELECT eid, name as ename FROM Employees) as e NATURAL FULL JOIN (SELECT course_id, name as cse_name FROM Courses) as cse
         WHERE cust_email = c.email 
             AND now() <= o.end_date -- not ended condition
@@ -125,8 +134,8 @@ BEGIN
         WHERE title = input_course_title
     );
 
-    avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
-                        FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
+    avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number) - COUNT(re.redemption_date)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
+                        FROM registers as r NATURAL FULL JOIN Redeems as re NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
                         GROUP BY o.seating_capacity, course_id, launch_date, sid
                         HAVING input_course_id = course_id AND 
                             input_launch_date = launch_date AND
@@ -201,7 +210,7 @@ BEGIN
     );
 
     IF (num_registration <> 0 OR num_redemption <> 0) THEN
-        RAISE EXCEPTION 'There are existing registrations for this session!';
+        RAISE EXCEPTION 'There are existing registrations or redemptions for this session!';
     END IF;
 
     has_started := (
