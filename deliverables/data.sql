@@ -125,11 +125,11 @@ call register_sessions('mdabbs2@wp.com', 'Computer Organization', '2021-04-01', 
 call register_sessions('iottewell3@moonfruit.com', 'Science of Music', '2021-04-01', 1, 'credit card');
 call register_sessions('atruscott4@forbes.com', 'Signals and Systems', '2021-04-01', 1, 'credit card');
 call register_sessions('achapman5@yelp.com', 'Singapore Employment Law', '2021-04-01', 1, 'credit card');
--- these onwards cannot register because register_sessions uses CURRENT_DATE and below offerings has a reg_deadline prior already
-call register_sessions('msooper6@smugmug.com', 'Financial Accounting', '2020-12-01', 1, 'credit card');
-call register_sessions('driddington7@spotify.com', 'General Biology', '2020-12-01', 1, 'credit card');
-call register_sessions('falwell8@dell.com', 'Modern Technology in Medicine and Health', '2020-12-01', 1, 'credit card');
-call register_sessions('ade9@cyberchimps.com', 'Chemical Engineering Principles', '2020-12-01', 1, 'credit card');
+-- these onwards are repeats
+call register_sessions('msooper6@smugmug.com', 'Programming Methodology', '2021-04-01', 1, 'credit card');
+call register_sessions('driddington7@spotify.com', 'Legal Environment of Business', '2021-04-01', 1, 'credit card');
+call register_sessions('falwell8@dell.com', 'Computer Organization', '2021-04-01', 1, 'credit card');
+call register_sessions('ade9@cyberchimps.com', 'Science of Music', '2021-04-01', 1, 'credit card');
 
 --Course packages
 --SYNTAX: add_course_package(IN input_package_name TEXT, IN input_num_free_registration INTEGER, IN input_sales_start_date DATE, IN input_sales_end_date DATE, IN input_price NUMERIC(12,2))
