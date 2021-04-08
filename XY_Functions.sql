@@ -134,8 +134,8 @@ BEGIN
         WHERE title = input_course_title
     );
 
-    avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
-                        FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
+    avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number) - COUNT(re.redemption_date)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
+                        FROM registers as r NATURAL FULL JOIN Redeems as re NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
                         GROUP BY o.seating_capacity, course_id, launch_date, sid
                         HAVING input_course_id = course_id AND 
                             input_launch_date = launch_date AND
