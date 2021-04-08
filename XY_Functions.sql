@@ -8,10 +8,19 @@ CREATE OR REPLACE PROCEDURE add_customer(IN input_cust_name TEXT, IN input_addre
 AS $$
 DECLARE
     customer_id INTEGER;
+    cust_exists BOOLEAN;
 BEGIN
 
-    INSERT INTO Customers(name, address, phone, email)
-        VALUES (input_cust_name, input_address, input_phone, input_email);
+    cust_exists := (
+        SELECT COUNT(*)
+        FROM Customers
+        WHERE email = input_email
+    ) > 0;
+
+    IF (NOT cust_exists) THEN
+        INSERT INTO Customers(name, address, phone, email)
+            VALUES (input_cust_name, input_address, input_phone, input_email);
+    END IF;
 
     SELECT c.cust_id into customer_id
         FROM Customers as c
