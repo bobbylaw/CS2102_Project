@@ -210,7 +210,7 @@ BEGIN
     );
 
     IF (num_registration <> 0 OR num_redemption <> 0) THEN
-        RAISE EXCEPTION 'There are existing registrations for this session!';
+        RAISE EXCEPTION 'There are existing registrations or redemptions for this session!';
     END IF;
 
     has_started := (
