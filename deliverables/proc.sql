@@ -85,16 +85,23 @@ The update operation is rejected if any one of the following conditions hold:
 	(3) the employee is a manager who is managing some area
 3. Only updates if all count is 0
 */
-CREATE OR REPLACE PROCEDURE remove_employee(employee_id INTEGER, departure_date DATE) AS $$
+CREATE OR REPLACE PROCEDURE remove_employee(employee_email TEXT, departure_date DATE) AS $$
 DECLARE
 	eid_handling_course_offering_count INTEGER := 0;
 	eid_teaching_course_count INTEGER := 0;
 	eid_managing_area_count INTEGER := 0;
+	employee_id INTEGER;
 BEGIN
 
+	employee_id := (
+        SELECT eid
+        FROM Employees E
+        WHERE E.email = employee_email
+    );
+	
 	-- Check if EID exist
 	IF NOT EXISTS(SELECT * from Employees where eid = employee_id) THEN
-		RAISE NOTICE 'Employee ID do not exist';
+		RAISE NOTICE 'Employee do not exist';
 		RETURN;
 	END IF;
 	
@@ -1978,55 +1985,6 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER CSE_OFFERING_AVAIL_TRIGGER
 BEFORE INSERT ON Registers
 FOR EACH ROW EXECUTE FUNCTION CSE_OFFERING_AVAIL();
-
-/* ============================================================================================================ */
-
--- For each course offered by the company, a customer can register for at most one of its sessions before its registration_deadline.
--- This means that customer can only redeem (register) each sessions also
-CREATE OR REPLACE FUNCTION at_most_one_redeem_session_in_offerings_func()
-RETURNS TRIGGER AS $$
-DECLARE
-	offerings_deadline DATE;
-	is_registered INTEGER;
-	is_redeemed INTEGER;
-BEGIN
-	SELECT registration_deadline INTO offerings_deadline
-	FROM Offerings
-	WHERE Offerings.course_id = NEW.course_id
-	AND Offerings.launch_date = NEW.launch_date;
-	
-	IF NEW.redemption_date > offerings_deadline THEN
-		RAISE EXCEPTION 'You are too late to redeem for this course session';
-	ELSE
-		SELECT COUNT(*) INTO is_registered FROM Registers
-		WHERE Registers.course_id = NEW.course_id
-		AND Registers.launch_date = NEW.launch_date
-		AND Registers.card_number = NEW.card_number;
-		
-		IF is_registered > 0 THEN
-			RAISE EXCEPTION 'This customer has already registered this course offerings';
-		ELSE
-			SELECT COUNT(*) INTO is_redeemed FROM Redeems
-			WHERE Redeems.course_id = NEW.course_id
-			AND Redeems.launch_date = NEW.launch_date
-			AND Redeems.card_number = NEW.card_number;
-			
-			IF is_redeemed > 0 THEN
-				RAISE EXCEPTION 'This customer has already redeemed this course offerings';
-			ELSE
-				RETURN NEW;
-			END IF;
-		END IF;
-	END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER at_most_one_redeem_session_in_offerings
-BEFORE INSERT ON Redeems
-FOR EACH ROW
-EXECUTE FUNCTION at_most_one_redeem_session_in_offerings_func();
-
-/* ============================================================================================================ */
 
 CREATE OR REPLACE FUNCTION check_unique_instances_for_managers()
 RETURNS TRIGGER AS $$
