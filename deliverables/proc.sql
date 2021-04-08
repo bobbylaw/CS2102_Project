@@ -87,9 +87,9 @@ The update operation is rejected if any one of the following conditions hold:
 */
 CREATE OR REPLACE PROCEDURE remove_employee(employee_id INTEGER, departure_date DATE) AS $$
 DECLARE
-	eid_handling_course_offering_count INTEGER = 0;
-	eid_teaching_course_count INTEGER= 0;
-	eid_managing_area_count INTEGER = 0;
+	eid_handling_course_offering_count INTEGER := 0;
+	eid_teaching_course_count INTEGER := 0;
+	eid_managing_area_count INTEGER := 0;
 BEGIN
 
 	-- Check if EID exist
@@ -891,7 +891,7 @@ BEGIN
         RAISE EXCEPTION 'The course probably has started or the new room doesnt have enough seating capacity';
     END IF;
 END;
-$$ LANGUAGE plpgsql
+$$ LANGUAGE plpgsql;
 
 
 -- 23.remove_session:
