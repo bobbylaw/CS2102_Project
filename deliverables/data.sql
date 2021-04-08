@@ -102,3 +102,26 @@ call add_session('Financial Accounting', '2020-12-01', 7, '2020-12-15', '10:00:0
 call add_session('General Biology', '2020-12-01', 8, '2020-12-15', '14:00:00', 'aphilpo@about.me', 8);
 call add_session('Modern Technology in Medicine and Health', '2020-12-01', 9, '2020-12-15', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
 call add_session('Chemical Engineering Principles', '2020-12-01', 10, '2020-12-15', '14:00:00', 'epinckneyy@cnbc.com', 10);
+
+--Course packages
+--SYNTAX: add_course_package(IN input_package_name TEXT, IN input_num_free_registration INTEGER, IN input_sales_start_date DATE, IN input_sales_end_date DATE, IN input_price NUMERIC(12,2))
+call add_course_package('pkg-01', 5, '2021-04-01', '2021-04-17', 25.00);
+call add_course_package('pkg-02', 5, '2021-04-07', '2021-04-15', 20.00);
+call add_course_package('pkg-03', 10, '2021-04-05', '2021-05-05', 40.00);
+call add_course_package('pkg-04', 8, '2021-04-07', '2021-04-30', 30.00);
+call add_course_package('pkg-05', 15, '2021-04-05', '2021-04-20', 60.00);
+call add_course_package('pkg-06', 20, '2021-04-01', '2021-04-30', 75.00);
+call add_course_package('pkg-07', 20, '2021-04-05', '2021-05-30', 75.00);
+
+--Buys
+--SYNTAX:buy_course_package(IN input_customer_email TEXT, IN input_package_id INTEGER)
+call buy_course_package('sstandrin0@i2i.jp', 1);
+call buy_course_package('fagastina1@guardian.co.uk', 1);
+call buy_course_package('mdabbs2@wp.com', 2);
+call buy_course_package('iottewell3@moonfruit.com', 3);
+call buy_course_package('falwell8@dell.com', 1);
+call buy_course_package('atruscott4@forbes.com', 5);
+call buy_course_package('ade9@cyberchimps.com', 4);
+call buy_course_package('driddington7@spotify.com', 6);
+call buy_course_package('msooper6@smugmug.com', 7);
+call buy_course_package('achapman5@yelp.com', 3);
