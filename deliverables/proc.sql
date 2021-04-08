@@ -2602,12 +2602,13 @@ BEGIN
         SELECT rid 
         FROM Sessions
         WHERE rid = NEW.rid
+            AND session_date = NEW.session_date
         AND( 
-        (NEW.start_time < start_time AND NEW.end_time > start_time AND NEW.end_time <= end_time) OR
-        (NEW.start_time >= start_time AND NEW.start_time < end_time AND NEW.end_time > end_time) OR
-        (NEW.start_time >= start_time AND NEW.start_time <= end_time AND NEW.end_time >= start_time AND NEW.end_time <= end_time) OR
-        (NEW.start_time < start_time AND NEW.start_time < end_time AND NEW.end_time > start_time AND NEW.end_time > end_time)
-        )) THEN
+            ((NEW.start_time < start_time AND NEW.start_time < end_time AND NEW.end_time > start_time AND NEW.end_time <= end_time) OR      
+            (NEW.start_time >= start_time AND NEW.start_time < end_time AND NEW.end_time > start_time AND NEW.end_time > end_time) OR
+            (NEW.start_time >= start_time AND NEW.start_time <= end_time AND NEW.end_time >= start_time AND NEW.end_time <= end_time) OR
+            (NEW.start_time < start_time AND NEW.start_time < end_time AND NEW.end_time > start_time AND NEW.end_time > end_time)
+            ))) THEN
         RAISE EXCEPTION 'The room is occupied!';
         RETURN NULL;
     ELSE 
