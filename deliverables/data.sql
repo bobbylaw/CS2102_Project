@@ -119,10 +119,10 @@ call add_session('Computer Organization', '2021-04-01', 4, '2021-05-18', '15:00:
 call add_session('Science of Music', '2021-04-01', 4, '2021-05-20', '17:00:00', 'epinckneyy@cnbc.com', 4);
 call add_session('Signals and Systems', '2021-04-01', 4, '2021-05-20', '09:00:00', 'ariggeardr@instagram.com', 5);
 call add_session('Singapore Employment Law', '2021-04-01', 4, '2021-05-20', '10:00:00', 'cgregorowiczu@npr.org', 6);
-call add_session('Financial Accounting', '2020-12-01', 4, '2020-01-13', '10:00:00', 'hlep@bloglines.com', 7);
-call add_session('General Biology', '2020-12-01', 4, '2020-01-13', '14:00:00', 'aphilpo@about.me', 8);
-call add_session('Modern Technology in Medicine and Health', '2020-12-01', 4, '2020-01-22', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
-call add_session('Chemical Engineering Principles', '2020-12-01', 4, '2020-01-22', '14:00:00', 'epinckneyy@cnbc.com', 10);
+call add_session('Financial Accounting', '2020-12-01', 4, '2021-01-13', '10:00:00', 'hlep@bloglines.com', 7);
+call add_session('General Biology', '2020-12-01', 4, '2021-01-13', '14:00:00', 'aphilpo@about.me', 8);
+call add_session('Modern Technology in Medicine and Health', '2020-12-01', 4, '2021-01-22', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
+call add_session('Chemical Engineering Principles', '2020-12-01', 4, '2021-01-22', '14:00:00', 'ncambelll@tripod.com', 10);
 
 -- Registers
 -- SYNTAX: register_sessions(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
@@ -150,13 +150,13 @@ call add_course_package('pkg-07', 20, '2021-04-05', '2021-05-30', 75.00);
 
 --Buys
 --SYNTAX:buy_course_package(IN input_customer_email TEXT, IN input_package_id INTEGER)
-call buy_course_package('sstandrin0@i2i.jp', 1);
-call buy_course_package('fagastina1@guardian.co.uk', 1);
-call buy_course_package('mdabbs2@wp.com', 2);
-call buy_course_package('iottewell3@moonfruit.com', 3);
-call buy_course_package('falwell8@dell.com', 1);
-call buy_course_package('atruscott4@forbes.com', 5);
-call buy_course_package('ade9@cyberchimps.com', 4);
-call buy_course_package('driddington7@spotify.com', 6);
-call buy_course_package('msooper6@smugmug.com', 7);
-call buy_course_package('achapman5@yelp.com', 3);
+call buy_course_package('sstandrin0@i2i.jp', 'pkg-01');
+call buy_course_package('fagastina1@guardian.co.uk', 'pkg-01');
+call buy_course_package('mdabbs2@wp.com', 'pkg-02');
+call buy_course_package('iottewell3@moonfruit.com', 'pkg-03');
+call buy_course_package('falwell8@dell.com', 'pkg-01');
+call buy_course_package('atruscott4@forbes.com', 'pkg-05');
+call buy_course_package('ade9@cyberchimps.com', 'pkg-04');
+call buy_course_package('driddington7@spotify.com', 'pkg-06');
+call buy_course_package('msooper6@smugmug.com', 'pkg-07');
+call buy_course_package('achapman5@yelp.com', 'pkg-03');
