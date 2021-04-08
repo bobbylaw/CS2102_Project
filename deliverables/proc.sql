@@ -358,7 +358,7 @@ Note that the seating capacity of the course offering must be at least equal to 
 	- get the course_area related to this instructor
 	- INSERT session into Session table
 */
-CREATE OR REPLACE PROCEDURE add_course_offerings (_course_id INTEGER, course_fees NUMERIC(12,2), launch_date DATE, registration_deadline DATE, target_number_of_registration INTEGER, administrator_id INTEGER, session_info SESSION_INFORMATION[])
+CREATE OR REPLACE PROCEDURE add_course_offerings (_course_id INTEGER, course_fees NUMERIC(12,2), launch_date DATE, registration_deadline DATE, target_number_of_registration INTEGER, administrator_email TEXT, session_info SESSION_INFORMATION[])
 AS $$
 DECLARE
 	available_instructor_id INTEGER;
@@ -369,7 +369,15 @@ DECLARE
 	sessions SESSION_INFORMATION;
 	instructor_available INTEGER;
 	course_area_of_instructor TEXT;
+    administrator_id INTEGER;
 BEGIN
+
+    administrator_id := (
+        SELECT eid
+        FROM Employees as e NATURAL JOIN Instructors as i
+        WHERE email = administrator_email
+    );
+
 	SELECT session_date INTO first_session_date
 	FROM unnest(session_info)
 	ORDER BY session_date ASC
