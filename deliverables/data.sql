@@ -108,7 +108,16 @@ call add_session('Chemical Engineering Principles', '2020-12-01', 10, '2020-12-1
 
 -- Registers
 -- SYNTAX: register_sessions(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
--- call register_sessions()
+call register_sessions('sstandrin0@i2i.jp', 'Programming Methodology', '2021-04-01', 1, 'credit card');
+call register_sessions('fagastina1@guardian.co.uk', 'Legal Environment of Business', '2021-04-01', 2, 'credit card');
+call register_sessions('mdabbs2@wp.com', 'Computer Organization', '2021-04-01', 3, 'credit card');
+call register_sessions('iottewell3@moonfruit.com', 'Science of Music', '2021-04-01', 4, 'credit card');
+call register_sessions('atruscott4@forbes.com', 'Signals and Systems', '2021-04-01', 5, 'credit card');
+call register_sessions('achapman5@yelp.com', 'Singapore Employment Law', '2021-04-01', 6, 'credit card');
+call register_sessions('msooper6@smugmug.com', 'Financial Accounting', '2020-12-01', 7, 'credit card');
+call register_sessions('driddington7@spotify.com', 'General Biology', '2020-12-01', 8, 'credit card');
+call register_sessions('falwell8@dell.com', 'Modern Technology in Medicine and Health', '2020-12-01', 9, 'credit card');
+call register_sessions('ade9@cyberchimps.com', 'Chemical Engineering Principles', '2020-12-01', 10, 'credit card');
 
 --Course packages
 --SYNTAX: add_course_package(IN input_package_name TEXT, IN input_num_free_registration INTEGER, IN input_sales_start_date DATE, IN input_sales_end_date DATE, IN input_price NUMERIC(12,2))

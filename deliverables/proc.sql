@@ -436,7 +436,7 @@ BEGIN
                 END IF;
                 start_time_helper := '09:00:00'; -- Earliest lesson at 9
                 start_date_helper := start_date_helper + INTERVAL '1 day'; -- Next day
-                available_hours_helper := {};
+                available_hours_helper := '{}';
             ELSIF start_time_helper = '12:00:00' THEN
                 start_time_helper := '14:00:00';
             ELSE
@@ -1479,7 +1479,6 @@ CREATE OR REPLACE FUNCTION top_packages(IN input_n INTEGER)
 RETURNS TABLE (package_identifier INTEGER, num_sessions INTEGER, price_package NUMERIC(12,2), start_date DATE, end_date DATE, num_sold BIGINT)
 AS $$
 DECLARE
-BEGIN
 BEGIN
 	RETURN QUERY(
     WITH pkg_info AS (
