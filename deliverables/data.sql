@@ -1,3 +1,10 @@
+--Restart seq number
+ALTER SEQUENCE course_packages_package_id_seq RESTART;
+ALTER SEQUENCE courses_course_id_seq RESTART;
+ALTER SEQUENCE customers_cust_id_seq RESTART;
+ALTER SEQUENCE employees_eid_seq RESTART;
+ALTER SEQUENCE sessions_sid_seq RESTART;
+
 -- Employee Administrator (10 rows)
 -- SYNTAX: add_employee(name TEXT, home_address TEXT, contact_number TEXT, email_address TEXT, salary_information SALARY_INFORMATION, join_date DATE, catagory TEXT, course_areas TEXT[] DEFAULT NULL)
 call add_employee ('Bevan Douglass', '8875 Dawn Street', '(844) 9752140', 'bdouglassj@wired.com', (2200, 'monthly'), '2020-06-10', 'administrator');

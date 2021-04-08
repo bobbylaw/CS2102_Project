@@ -1290,13 +1290,13 @@ BEGIN
     );
     
     input_instructor_eid := (
-        SELECT eid
+        SELECT DISTINCT eid
         FROM Employees as e NATURAL JOIN Instructors as i
         WHERE email = input_instructor_email
     );
 
     is_valid_session := (
-        SELECT input_session_day <= o.registration_deadline
+        SELECT input_session_day - o.registration_deadline >= 10
         FROM Offerings as o
         WHERE input_course_id = course_id
             AND input_launch_date = launch_date
