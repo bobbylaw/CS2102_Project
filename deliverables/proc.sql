@@ -1501,9 +1501,8 @@ It is also possible for the output table to have fewer than N records if N is la
 CREATE OR REPLACE FUNCTION top_packages(IN input_n INTEGER)
 RETURNS TABLE (package_identifier INTEGER, num_sessions INTEGER, price_package NUMERIC(12,2), start_date DATE, end_date DATE, num_sold BIGINT)
 AS $$
-DECLARE
 BEGIN
-	RETURN QUERY(
+    RETURN QUERY(
     WITH pkg_info AS (
         SELECT package_id, coalesce(count(purchase_date), 0) AS num_sales --if nobody buys the package, let the num_sales be 0.
         FROM Buys NATURAL RIGHT JOIN Course_packages --include the packages which no one buys.
@@ -1523,7 +1522,7 @@ BEGIN
         ) AS New_sales
 		WHERE num_sales = New_sales.num_sales
 	)
-    ORDER BY num_sales, price DESC);
+    ORDER BY num_sales DESC, price DESC);
 
 END
 $$ LANGUAGE plpgsql;
