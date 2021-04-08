@@ -821,7 +821,7 @@ If the registration transaction is valid, this routine will process the registra
 Things to note:
 - When a customer register for a course session, we use his first credit card to register. (credit card not given)
 */
-CREATE OR REPLACE PROCEDURE register_sessions(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
+CREATE OR REPLACE PROCEDURE register_sessions(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
 AS $$
 DECLARE
     curs CURSOR FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
@@ -831,9 +831,23 @@ DECLARE
     customer_cc_num TEXT;
     redeem_package_id INTEGER;
     package_purchase_date DATE;
+    customer_id INTEGER;
+    course_identifier INTEGER;
 BEGIN
     is_redeem := 0;
     is_register := 0;
+
+    customer_id := (
+        SELECT cust_id
+        FROM Customers
+        WHERE customer_email = email
+    );
+
+    course_identifier := (
+        SELECT course_id
+        FROM Courses
+        WHERE name = course_title
+    );
 
     OPEN curs;
     LOOP

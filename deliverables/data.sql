@@ -106,6 +106,10 @@ call add_session('General Biology', '2020-12-01', 8, '2020-12-15', '14:00:00', '
 call add_session('Modern Technology in Medicine and Health', '2020-12-01', 9, '2020-12-15', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
 call add_session('Chemical Engineering Principles', '2020-12-01', 10, '2020-12-15', '14:00:00', 'epinckneyy@cnbc.com', 10);
 
+-- Registers
+-- SYNTAX: register_sessions(IN customer_id INTEGER, IN course_identifier INTEGER, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
+
+
 --Course packages
 --SYNTAX: add_course_package(IN input_package_name TEXT, IN input_num_free_registration INTEGER, IN input_sales_start_date DATE, IN input_sales_end_date DATE, IN input_price NUMERIC(12,2))
 call add_course_package('pkg-01', 5, '2021-04-01', '2021-04-17', 25.00);
