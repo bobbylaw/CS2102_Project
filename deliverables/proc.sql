@@ -716,22 +716,21 @@ BEGIN
     AND num_of_redemption > 0 
     OR (num_of_redemption = 0 AND EXISTS (
                                     SELECT 1 
-									FROM Owns_credit_cards NATURAL JOIN Redeems NATURAL JOIN Sessions  
+				    FROM Owns_credit_cards NATURAL JOIN Redeems NATURAL JOIN Sessions  
                                     WHERE Owns_credit_cards.cust_id = customer_id
                                     AND Sessions.session_date - CAST(NOW() AS DATE) >= 7));
 RETURN query(
     select jsonb_build_object(
-	    'package name', package_name, 'number of free sessions', num_free_sessions, 'number of sessions left', num_unredeem_sessions, 
+	'package name', package_name, 'number of free sessions', num_free_sessions, 'number of sessions left', num_unredeem_sessions, 
         'info of redeemed sessions' , 
-        (SELECT COALESCE(jsonb_agg(jsonb_build_object('course name', C.name, 'session date', S.session_date, 'start time', S.start_time)) , '[]')
-		    FROM Redeems AS R NATURAL JOIN Courses AS C NATURAL JOIN Sessions AS S NATURAL JOIN Owns_credit_cards AS O
+           (SELECT COALESCE(jsonb_agg(jsonb_build_object('course name', C.name, 'session date', S.session_date, 'start time', S.start_time)) , '[]')
+	    FROM Redeems AS R NATURAL JOIN Courses AS C NATURAL JOIN Sessions AS S NATURAL JOIN Owns_credit_cards AS O
             WHERE O.cust_id = customer_id 
             AND R.package_id = pid
             AND R.purchase_date = date_of_purchase
             AND C.course_id = R.course_id
             GROUP BY S.session_date, S.start_time
-            ORDER BY S.session_date, S.start_time ASC
-        )
+            ORDER BY S.session_date, S.start_time ASC)
 	) AS json_obj);
 	
 END;
