@@ -304,8 +304,7 @@ BEGIN
             is_unavail := 0;
 
             SELECT COALESCE(SUM(end_time - start_time), INTERVAL '0 hour') INTO total_teaching_hours_helper FROM Sessions
-            WHERE Sessions.course_id = course_identifier
-            AND Sessions.eid = r.eid
+            WHERE Sessions.eid = r.eid
             AND EXTRACT(Month FROM start_date_helper) = EXTRACT(Month FROM Sessions.session_date);
 
             IF start_time_helper = ('18:00:00' - course_duration + INTERVAL '1 hour') THEN
@@ -324,8 +323,7 @@ BEGIN
                 start_time_helper := '14:00:00';
             ELSE
                 SELECT COUNT(*) INTO is_unavail FROM Sessions 
-                WHERE Sessions.course_id = course_identifier
-                AND Sessions.eid = r.eid
+                WHERE Sessions.eid = r.eid
                 AND Sessions.session_date = start_date_helper
                 AND (start_time_helper, start_time_helper + course_duration) OVERLAPS ((Sessions.start_time - INTERVAL '1 hour'), (Sessions.end_time + INTERVAL '1 hour'));
 
@@ -866,7 +864,8 @@ BEGIN
         WHERE title = course_title
     );
 
-    OPEN curs FOR (SELECT card_number FROM Owns_credit_cards WHERE Owns_credit_cards.cust_id = customer_id);
+    OPEN curs FOR (SELECT card_number FROM Owns_credit_cards
+        WHERE Owns_credit_cards.cust_id = customer_id AND CURRENT_DATE < Owns_Credit_Cards.expiry_date);
     LOOP
         FETCH curs INTO r;
         EXIT WHEN NOT FOUND;
@@ -1740,19 +1739,19 @@ BEGIN
             year := current_year;
 			month := current_month;
 
-            SELECT SUM(amount) FROM Pay_slips INTO total_salary_paid
+            SELECT COALESCE(SUM(amount), 0) FROM Pay_slips INTO total_salary_paid
             WHERE EXTRACT(MONTH FROM payment_date) = current_month 
             AND EXTRACT(YEAR FROM payment_date) = current_year;
 
-            SELECT SUM(price) INTO total_sales FROM Buys NATURAL JOIN Course_packages
+            SELECT COALESCE(SUM(price), 0) INTO total_sales FROM Buys NATURAL JOIN Course_packages
             WHERE EXTRACT(MONTH FROM purchase_date) = current_month 
             AND EXTRACT(YEAR FROM purchase_date) = current_year;
 
-            SELECT SUM(fees) INTO total_registration_fees FROM Registers NATURAL JOIN Offerings
+            SELECT COALESCE(SUM(fees), 0) INTO total_registration_fees FROM Registers NATURAL JOIN Offerings
             WHERE EXTRACT(MONTH FROM registration_date) = current_month 
             AND EXTRACT(YEAR FROM registration_date) = current_year;
 
-            SELECT SUM(refund_amt) INTO refund_amount FROM Cancels
+            SELECT COALESCE(SUM(refund_amt), 0) INTO refund_amount FROM Cancels
             WHERE EXTRACT(MONTH FROM cancellation_date) = current_month 
             AND EXTRACT(YEAR FROM cancellation_date) = current_year;
 
@@ -2521,7 +2520,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER refund_session
-BEFORE INSERT OR UPDATE
+BEFORE INSERT
 ON Cancels
 FOR EACH ROW
 EXECUTE FUNCTION refund_session_func();
