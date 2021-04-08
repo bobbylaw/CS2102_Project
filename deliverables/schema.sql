@@ -194,7 +194,7 @@ CREATE TABLE Course_packages (
     sales_start_date DATE NOT NULL,
     sales_end_date DATE NOT NULL,
     num_free_registrations INTEGER NOT NULL, 
-    name TEXT NOT NULL,
+    name TEXT UNIQUE NOT NULL,
     price NUMERIC(12,2)
     CHECK(sales_end_date - sales_start_date >= 0)-- Sales_end_date should be after sales_start_date
 );
