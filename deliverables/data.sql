@@ -90,6 +90,7 @@ INSERT INTO Rooms VALUES (10, 'Floor 2 Room 5', 30);
 call add_course_offerings('Programming Methodology', 68.00, '2021-04-01', '2021-04-30', 70, 'bdouglassj@wired.com',  '{"(2021-05-10, 9:00, 1)","(2021-05-12, 9:00, 1)","(2021-05-14, 9:00, 1)"}'); 
 call add_course_offerings('Programming Methodology', 68.00, '2021-04-05', '2021-04-30', 70, 'bdouglassj@wired.com',  '{"(2021-05-11, 9:00, 2)","(2021-05-13, 9:00, 2)","(2021-05-17, 9:00, 2)"}'); 
 call add_course_offerings('Legal Environment of Business', 98.00, '2021-04-01', '2021-04-30', 50, 'jwimpeneyh@delicious.com',  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
+call add_course_offerings('Legal Environment of Business', 98.00, '2021-04-05', '2021-04-30', 50, 'jwimpeneyh@delicious.com',  '{"(2021-05-11, 14:00, 2)","(2021-05-13, 14:00, 2)","(2021-05-17, 14:00, 2)"}');
 call add_course_offerings('Computer Organization', 68.00, '2021-04-01', '2021-04-30', 80, 'zbugged@tinypic.com',  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
 call add_course_offerings('Science of Music', 38.00, '2021-04-01', '2021-04-30', 80, 'arobilliardi@tamu.edu',  '{"(2021-05-17, 14:00, 4)","(2021-05-19, 14:00, 4)","(2021-05-21, 14:00, 4)"}');
 call add_course_offerings('Signals and Systems', 48.00, '2021-04-01', '2021-04-30', 40, 'iwhittera@fema.gov',  '{"(2021-05-17, 9:00, 5)","(2021-05-19, 9:00, 5)","(2021-05-21, 9:00, 5)"}');
@@ -128,14 +129,14 @@ call add_session('Chemical Engineering Principles', '2020-12-01', 4, '2021-01-22
 -- Registers
 -- SYNTAX: register_sessions(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
 call register_sessions('sstandrin0@i2i.jp', 'Programming Methodology', '2021-04-05', 1, 'credit card');
-call register_sessions('fagastina1@guardian.co.uk', 'Legal Environment of Business', '2021-04-01', 1, 'credit card');
+call register_sessions('fagastina1@guardian.co.uk', 'Legal Environment of Business', '2021-04-05', 1, 'credit card');
 call register_sessions('mdabbs2@wp.com', 'Computer Organization', '2021-04-01', 1, 'credit card');
 call register_sessions('iottewell3@moonfruit.com', 'Science of Music', '2021-04-01', 1, 'credit card');
 call register_sessions('atruscott4@forbes.com', 'Signals and Systems', '2021-04-01', 1, 'credit card');
 call register_sessions('achapman5@yelp.com', 'Singapore Employment Law', '2021-04-01', 1, 'credit card');
 -- these onwards are repeats
 call register_sessions('msooper6@smugmug.com', 'Programming Methodology', '2021-04-05', 1, 'credit card');
-call register_sessions('driddington7@spotify.com', 'Legal Environment of Business', '2021-04-01', 1, 'credit card');
+call register_sessions('driddington7@spotify.com', 'Legal Environment of Business', '2021-04-05', 1, 'credit card');
 call register_sessions('falwell8@dell.com', 'Computer Organization', '2021-04-01', 1, 'credit card');
 call register_sessions('ade9@cyberchimps.com', 'Science of Music', '2021-04-01', 1, 'credit card');
 
