@@ -54,10 +54,18 @@ The input to the routine is a course offering identifier.
 The routine returns a table of records with the following information for each available session: session date, session start hour, instructor name, and number of remaining seats for that session. 
 The output is sorted in ascending order of session date and start hour.
 */
-CREATE OR REPLACE FUNCTION get_available_course_sessions(IN input_course_id INTEGER, IN input_launch_date DATE)
+CREATE OR REPLACE FUNCTION get_available_course_sessions(IN input_course_title TEXT, IN input_launch_date DATE)
 RETURNS TABLE (session_date DATE, start_hour float, instructor_name TEXT, remaining_seats BIGINT)
 AS $$
+DECLARE
+    input_course_id INTEGER;
 BEGIN
+
+    input_course_id := (
+        SELECT course_id
+        FROM Courses
+        WHERE title = input_course_title
+    );
 
     RETURN query (
         SELECT s.session_date as session_date, EXTRACT(hours from s.start_time) as start_hour, e.name as instructor_name, (o.seating_capacity - COUNT(re.redemption_date) - COUNT(r.card_number)) as remaining_seats
@@ -102,13 +110,21 @@ The inputs to the routine include the following: customer identifier, course off
 If the update request is valid and there is an available seat in the new session, the routine will process the request with the necessary updates.
 */
 
-CREATE OR REPLACE PROCEDURE update_course_session(IN input_cust_email TEXT, IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER)
+CREATE OR REPLACE PROCEDURE update_course_session(IN input_cust_email TEXT, IN input_course_title TEXT, IN input_launch_date DATE, IN input_sid INTEGER)
 AS $$
 DECLARE
     avail_capacity INTEGER;
     old_sid INTEGER;
     customer_card_number TEXT;
+    input_course_id INTEGER;
 BEGIN
+
+    input_course_id := (
+        SELECT course_id
+        FROM Courses
+        WHERE title = input_course_title
+    );
+
     avail_capacity := (SELECT COALESCE((o.seating_capacity - COUNT(r.card_number)), 0) as remaining_seats -- coalesce 0 is if newly chosen session does not exist
                         FROM registers as r NATURAL JOIN Sessions as s NATURAL JOIN (SELECT launch_date, course_id, seating_capacity FROM Offerings) as o
                         GROUP BY o.seating_capacity, course_id, launch_date, sid
@@ -153,13 +169,21 @@ The request must not be performed if there is at least one registration for the 
 Note that the resultant seating capacity of the course offering could fall below the course offering’s target number of registrations, which is allowed.
 */
 
-CREATE OR REPLACE PROCEDURE remove_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER)
+CREATE OR REPLACE PROCEDURE remove_session(IN input_course_title TEXT, IN input_launch_date DATE, IN input_sid INTEGER)
 AS $$
 DECLARE
     num_registration INTEGER;
     num_redemption INTEGER;
     has_started BOOLEAN;
+    input_course_id INTEGER;
 BEGIN
+
+    input_course_id := (
+        SELECT course_id
+        FROM Courses
+        WHERE title = input_course_title
+    );
+
     num_registration := (
         SELECT COUNT(*)
         FROM Registers
@@ -206,14 +230,22 @@ The inputs to the routine include the following: course offering identifier, new
 If the course offering’s registration deadline has not passed and the the addition request is valid, the routine will process the request with the necessary updates.
 */
 
-CREATE OR REPLACE PROCEDURE add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
+CREATE OR REPLACE PROCEDURE add_session(IN input_course_title TEXT, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
 AS $$
 DECLARE
     is_valid_session BOOLEAN;
     input_course_area TEXT;
     input_course_duration INTERVAL;
     input_instructor_eid INTEGER;
+    input_course_id INTEGER;
 BEGIN
+
+    input_course_id := (
+        SELECT course_id
+        FROM Courses
+        WHERE title = input_course_title
+    );
+    
     input_instructor_eid := (
         SELECT eid
         FROM Employees as e NATURAL JOIN Instructors as i

@@ -66,16 +66,16 @@ INSERT INTO Rooms VALUES (9, 'Floor 2 Room 4', 30);
 INSERT INTO Rooms VALUES (10, 'Floor 2 Room 5', 30);
 
 -- Course Offerings (There is 11 courses, 10 courses is offered, registration is almost a month before it start)
-call add_course_offerings(1, 68.00, '2021-04-01', '2021-04-30', 70, 1,  '{"(2021-05-10, 9:00, 1)","(2021-05-12, 9:00, 1)","(2021-05-14, 9:00, 1)"}'); 
-call add_course_offerings(2, 98.00, '2021-04-01', '2021-04-30', 50, 2,  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
-call add_course_offerings(3, 68.00, '2021-04-01', '2021-04-30', 80, 3,  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
-call add_course_offerings(4, 38.00, '2021-04-01', '2021-04-30', 80, 4,  '{"(2021-05-17, 14:00, 4)","(2021-05-19, 14:00, 4)","(2021-05-21, 14:00, 4)"}');
-call add_course_offerings(5, 48.00, '2021-04-01', '2021-04-30', 40, 5,  '{"(2021-05-17, 9:00, 1)","(2021-05-19, 9:00, 1)","(2021-05-21, 9:00, 1)"}');
-call add_course_offerings(6, 58.00, '2021-04-01', '2021-04-30', 60, 6,  '{"(2021-05-17, 14:00, 2)","(2021-05-19, 14:00, 2)","(2021-05-21, 14:00, 2)"}');
-call add_course_offerings(7, 58.00, '2020-12-01', '2020-12-27', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
-call add_course_offerings(8, 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(2021-01-12, 16:00, 1)","(2021-01-14, 16:00, 1)","(2021-01-18, 16:00, 1)"}');
-call add_course_offerings(9, 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
-call add_course_offerings(10, 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
+call add_course_offerings('Programming Methodology', 68.00, '2021-04-01', '2021-04-30', 70, 'bdouglassj@wired.com',  '{"(2021-05-10, 9:00, 1)","(2021-05-12, 9:00, 1)","(2021-05-14, 9:00, 1)"}'); 
+call add_course_offerings('Legal Environment of Business', 98.00, '2021-04-01', '2021-04-30', 50, 2,  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
+call add_course_offerings('Computer Organization', 68.00, '2021-04-01', '2021-04-30', 80, 3,  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
+call add_course_offerings('Science of Music', 38.00, '2021-04-01', '2021-04-30', 80, 4,  '{"(2021-05-17, 14:00, 4)","(2021-05-19, 14:00, 4)","(2021-05-21, 14:00, 4)"}');
+call add_course_offerings('Signals and Systems', 48.00, '2021-04-01', '2021-04-30', 40, 5,  '{"(2021-05-17, 9:00, 1)","(2021-05-19, 9:00, 1)","(2021-05-21, 9:00, 1)"}');
+call add_course_offerings('Singapore Employment Law', 58.00, '2021-04-01', '2021-04-30', 60, 6,  '{"(2021-05-17, 14:00, 2)","(2021-05-19, 14:00, 2)","(2021-05-21, 14:00, 2)"}');
+call add_course_offerings('Financial Accounting', 58.00, '2020-12-01', '2020-12-27', 60, 7,  '{"(2021-01-12, 9:00, 3)","(2021-01-14, 9:00, 3)","(2021-01-18, 9:00, 3)"}');
+call add_course_offerings('General Biology', 108.00, '2020-12-01', '2020-12-27', 50, 8,  '{"(2021-01-12, 16:00, 1)","(2021-01-14, 16:00, 1)","(2021-01-18, 16:00, 1)"}');
+call add_course_offerings('Modern Technology in Medicine and Health', 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
+call add_course_offerings('Chemical Engineering Principles', 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
 
 
 -- Customers
@@ -92,13 +92,13 @@ CALL add_customer('Ax de Mendoza', '4421 Melvin Avenue', '(538) 9763902', 'ade9@
 
 -- Sessions 
 -- SYNTAX: add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
-call add_session(1, '2021-04-01', 1, '2021-04-15', '09:00:00', 'cbindingw@marriott.com', 1);
-call add_session(2, '2021-04-01', 2, '2021-04-15', '14:00:00', 'ljewettm@dropbox.com', 2);
-call add_session(3, '2021-04-01', 3, '2021-04-15', '15:00:00', 'mglanfields@github.com', 3);
-call add_session(4, '2021-04-01', 4, '2021-04-15', '17:00:00', 'epinckneyy@cnbc.com', 4);
-call add_session(5, '2021-04-01', 5, '2021-04-15', '09:00:00', 'ariggeardr@instagram.com', 5);
-call add_session(6, '2021-04-01', 6, '2021-04-15', '10:00:00', 'cgregorowiczu@npr.org', 6);
-call add_session(7, '2020-12-01', 7, '2020-12-15', '10:00:00', 'hlep@bloglines.com', 7);
-call add_session(8, '2020-12-01', 8, '2020-12-15', '14:00:00', 'aphilpo@about.me', 8);
-call add_session(9, '2020-12-01', 9, '2020-12-15', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
-call add_session(10, '2020-12-01', 10, '2020-12-15', '14:00:00', 'epinckneyy@cnbc.com', 10);
+call add_session('Programming Methodology', '2021-04-01', 1, '2021-04-15', '09:00:00', 'cbindingw@marriott.com', 1);
+call add_session('Legal Environment of Business', '2021-04-01', 2, '2021-04-15', '14:00:00', 'ljewettm@dropbox.com', 2);
+call add_session('Computer Organization', '2021-04-01', 3, '2021-04-15', '15:00:00', 'mglanfields@github.com', 3);
+call add_session('Science of Music', '2021-04-01', 4, '2021-04-15', '17:00:00', 'epinckneyy@cnbc.com', 4);
+call add_session('Signals and Systems', '2021-04-01', 5, '2021-04-15', '09:00:00', 'ariggeardr@instagram.com', 5);
+call add_session('Singapore Employment Law', '2021-04-01', 6, '2021-04-15', '10:00:00', 'cgregorowiczu@npr.org', 6);
+call add_session('Financial Accounting', '2020-12-01', 7, '2020-12-15', '10:00:00', 'hlep@bloglines.com', 7);
+call add_session('General Biology', '2020-12-01', 8, '2020-12-15', '14:00:00', 'aphilpo@about.me', 8);
+call add_session('Modern Technology in Medicine and Health', '2020-12-01', 9, '2020-12-15', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
+call add_session('Chemical Engineering Principles', '2020-12-01', 10, '2020-12-15', '14:00:00', 'epinckneyy@cnbc.com', 10);
