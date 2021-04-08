@@ -149,7 +149,7 @@ call add_course_package('pkg-06', 20, '2021-04-01', '2021-04-30', 75.00);
 call add_course_package('pkg-07', 20, '2021-04-05', '2021-05-30', 75.00);
 
 --Buys
---SYNTAX:buy_course_package(IN input_customer_email TEXT, IN input_package_id INTEGER)
+--SYNTAX:buy_course_package(IN input_customer_email TEXT, IN input_package_name TEXT)
 call buy_course_package('sstandrin0@i2i.jp', 'pkg-01');
 call buy_course_package('fagastina1@guardian.co.uk', 'pkg-01');
 call buy_course_package('mdabbs2@wp.com', 'pkg-02');
