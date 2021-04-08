@@ -107,7 +107,7 @@ BEGIN
 	
 	SELECT count(*) INTO eid_handling_course_offering_count
 	FROM Offerings O
-	WHERE O.eid = employee_id AND O.registration_date > departure_date;
+	WHERE O.eid = employee_id AND O.registration_deadline > departure_date;
 	
 	SELECT count(*) INTO eid_teaching_course_count
 	FROM Sessions S
@@ -121,9 +121,8 @@ BEGIN
 		UPDATE Employees
 		SET depart_date = departure_date
 		WHERE eid = employee_id;
-		RAISE NOTICE 'OPERATION SUCCESS';
 	ELSE
-		RAISE NOTICE 'OPERATION FAILED: Employee is currently still tied to some work';
+		RAISE EXCEPTION 'OPERATION FAILED: Employee is currently still tied to some work';
 	END IF;
 END;
 $$ LANGUAGE plpgsql;

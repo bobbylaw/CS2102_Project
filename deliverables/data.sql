@@ -23,7 +23,7 @@ call add_employee ('Omero Churchyard', '42636 Nobel Hill', '(240) 7094122', 'och
 call add_employee ('Lebbie Goulter', '5634 Upham Center', '(967) 3520624', 'lgoulter9@parallels.com', (1900,'monthly'), '2020-12-27', 'manager', '{Law}');
 call add_employee ('Shelagh Glenwright', '83925 Ludington Center', '(630) 4688864', 'sglenwright7@ning.com', (1800,'monthly'), '2020-03-29', 'manager', null);
 
--- Employee Full-time-Instructor (7 rows)
+-- Employee Full-time-Instructor (10 rows)
 call add_employee ('Carlin Binding', '40 Butternut Way', '(564) 2063343', 'cbindingw@marriott.com', (2000, 'monthly'), '2020-06-25', 'instructor', '{Computer Science}');
 call add_employee ('Lettie Jewett', '00 Linden Parkway', '(572) 1491067', 'ljewettm@dropbox.com', (2100, 'monthly'), '2020-07-19', 'instructor', '{Business}');
 call add_employee ('Alexina Philp', '48551 Dovetail Road', '(560) 4995603', 'aphilpo@about.me', (1800, 'monthly'), '2020-09-26', 'instructor', '{Biomedical Engineering}');
@@ -31,8 +31,12 @@ call add_employee ('Nona Cambell', '914 Dexter Way', '(647) 5171857', 'ncambelll
 call add_employee ('Woodrow Heggadon', '9756 Debra Alley', '(918) 8122541', 'wheggadonn@qq.com', (1900, 'monthly'), '2020-10-23', 'instructor', '{Biomedical Engineering, Computer Engineering}');
 call add_employee ('Hildegarde Le Leu', '554 Ludington Hill', '(658) 3260086', 'hlep@bloglines.com', (2000, 'monthly'), '2020-11-03', 'instructor', '{Business, Accountancy}');
 call add_employee ('Axe Riggeard', '4 Stone Corner Junction', '(814) 4788895', 'ariggeardr@instagram.com', (2400, 'monthly'), '2020-12-30', 'instructor', '{Electrical Engineering, Medicine}');
+call add_employee ('Malorie Jansson', '2 Waxwing Point', '(346) 9042158', 'mjansson7@archive.org', (2400, 'monthly'), '2021-01-09', 'instructor', '{Music}');
+call add_employee ('Christiana Myford', '70 Sheridan Center', '(224) 2820253', 'cmyford8@wsj.com', (2300, 'monthly'), '2020-01-05', 'instructor', '{Food Science and Technology}');
+call add_employee ('Genny Townson', '7 Reindahl Avenue', '(554) 4651911', 'gtownson9@sogou.com', (1900, 'monthly'), '2020-04-16', 'instructor', '{Design and Environment}');
 
--- Employee Part-time-Instructor (7 rows)
+
+-- Employee Part-time-Instructor (10 rows)
 call add_employee ('Matias Glanfield', '094 Kipling Trail', '(385) 9637088', 'mglanfields@github.com', (15, 'hourly'), '2020-06-04', 'instructor', '{Computer Engineering}');
 call add_employee ('Mirilla Hunnywell', '420 Texas Alley', '(737) 5263148', 'mhunnywellv@theglobeandmail.com', (17, 'hourly'), '2020-07-07', 'instructor', '{Accountancy}');
 call add_employee ('Simone Caddens', '228 Elgar Park', '(575) 6226111', 'scaddensq@comsenz.com', (18, 'hourly'), '2020-09-26', 'instructor', '{Chemical Engineering}');
@@ -40,6 +44,13 @@ call add_employee ('Betty Probate', '49889 Oak Valley Drive', '(726) 3851701', '
 call add_employee ('Caesar McCrainor', '77809 Vera Trail', '(352) 3390720', 'cmccrainorx@nsw.gov.au', (15, 'hourly'), '2020-12-27', 'instructor', '{Medicine, Food Science and Technology}');
 call add_employee ('Elvira Pinckney', '3550 Pepper Wood Crossing', '(209) 5765041', 'epinckneyy@cnbc.com', (16, 'hourly'), '2020-12-29', 'instructor', '{Design and Environment, Music}');
 call add_employee ('Cello Gregorowicz', '3945 Talmadge Park', '(122) 3027611', 'cgregorowiczu@npr.org', (18, 'hourly'), '2020-12-31', 'instructor', '{Law, Business}');
+call add_employee ('Pebrook Shillum', '794 Fieldstone Center', '(395) 8949423', 'pshillum4@businessweek.com', (14, 'hourly'), '2020-07-29', 'instructor', '{Electrical Engineering}');
+call add_employee ('Adrianna Divis', '688 Carioca Trail', '(140) 9471960', 'adivis5@facebook.com', (12, 'hourly'), '2020-01-07', 'instructor', '{Music}');
+call add_employee ('Bree Wolfinger', '86 Red Cloud Park', '(878) 2967928', 'bwolfinger6@prlog.org', (17, 'hourly'), '2020-10-16', 'instructor', '{Accountancy}');
+
+
+-- Simulate employee left company
+call remove_employee('sglenwright7@ning.com', '2021-03-15');
 
 -- Courses (assuming time is in hours)
 -- SYNTAX: add_course(IN course_title TEXT, IN course_description TEXT, IN course_area TEXT, IN course_duration INTERVAL)
@@ -95,16 +106,16 @@ CALL add_customer('Ax de Mendoza', '4421 Melvin Avenue', '(538) 9763902', 'ade9@
 
 -- Sessions 
 -- SYNTAX: add_session(IN input_course_id INTEGER, IN input_launch_date DATE, IN input_sid INTEGER, IN input_session_day DATE, IN input_session_start_hour TIME, IN input_instructor_email TEXT, IN input_rid INTEGER)
-call add_session('Programming Methodology', '2021-04-01', 1, '2021-04-15', '09:00:00', 'cbindingw@marriott.com', 1);
-call add_session('Legal Environment of Business', '2021-04-01', 2, '2021-04-15', '14:00:00', 'ljewettm@dropbox.com', 2);
-call add_session('Computer Organization', '2021-04-01', 3, '2021-04-15', '15:00:00', 'mglanfields@github.com', 3);
-call add_session('Science of Music', '2021-04-01', 4, '2021-04-15', '17:00:00', 'epinckneyy@cnbc.com', 4);
-call add_session('Signals and Systems', '2021-04-01', 5, '2021-04-15', '09:00:00', 'ariggeardr@instagram.com', 5);
-call add_session('Singapore Employment Law', '2021-04-01', 6, '2021-04-15', '10:00:00', 'cgregorowiczu@npr.org', 6);
-call add_session('Financial Accounting', '2020-12-01', 7, '2020-12-15', '10:00:00', 'hlep@bloglines.com', 7);
-call add_session('General Biology', '2020-12-01', 8, '2020-12-15', '14:00:00', 'aphilpo@about.me', 8);
-call add_session('Modern Technology in Medicine and Health', '2020-12-01', 9, '2020-12-15', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
-call add_session('Chemical Engineering Principles', '2020-12-01', 10, '2020-12-15', '14:00:00', 'epinckneyy@cnbc.com', 10);
+call add_session('Programming Methodology', '2021-04-01', 4, '2021-05-18', '09:00:00', 'cbindingw@marriott.com', 1);
+call add_session('Legal Environment of Business', '2021-04-01', 4, '2021-05-18', '14:00:00', 'ljewettm@dropbox.com', 2);
+call add_session('Computer Organization', '2021-04-01', 4, '2021-05-18', '15:00:00', 'mglanfields@github.com', 3);
+call add_session('Science of Music', '2021-04-01', 4, '2021-05-20', '17:00:00', 'epinckneyy@cnbc.com', 4);
+call add_session('Signals and Systems', '2021-04-01', 4, '2021-05-20', '09:00:00', 'ariggeardr@instagram.com', 5);
+call add_session('Singapore Employment Law', '2021-04-01', 4, '2021-05-20', '10:00:00', 'cgregorowiczu@npr.org', 6);
+call add_session('Financial Accounting', '2020-12-01', 4, '2020-01-13', '10:00:00', 'hlep@bloglines.com', 7);
+call add_session('General Biology', '2020-12-01', 4, '2020-01-13', '14:00:00', 'aphilpo@about.me', 8);
+call add_session('Modern Technology in Medicine and Health', '2020-12-01', 4, '2020-01-22', '14:00:00', 'cmccrainorx@nsw.gov.au', 9);
+call add_session('Chemical Engineering Principles', '2020-12-01', 4, '2020-01-22', '14:00:00', 'epinckneyy@cnbc.com', 10);
 
 -- Registers
 -- SYNTAX: register_sessions(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE, IN session_id INTEGER, payment_method TEXT)
