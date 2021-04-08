@@ -88,6 +88,7 @@ INSERT INTO Rooms VALUES (10, 'Floor 2 Room 5', 30);
 -- Course Offerings (There is 11 courses, 10 courses is offered, registration is almost a month before it start)
 -- SYNTAX: add_course_offerings (IN course_title TEXT, IN course_fees NUMERIC(12,2), IN launch_date DATE, IN registration_deadline DATE, IN target_number_of_registration INTEGER, IN administrator_email TEXT, IN session_info SESSION_INFORMATION[])
 call add_course_offerings('Programming Methodology', 68.00, '2021-04-01', '2021-04-30', 70, 'bdouglassj@wired.com',  '{"(2021-05-10, 9:00, 1)","(2021-05-12, 9:00, 1)","(2021-05-14, 9:00, 1)"}'); 
+call add_course_offerings('Programming Methodology', 68.00, '2021-04-05', '2021-04-30', 70, 'bdouglassj@wired.com',  '{"(2021-05-11, 9:00, 2)","(2021-05-13, 9:00, 2)","(2021-05-17, 9:00, 2)"}'); 
 call add_course_offerings('Legal Environment of Business', 98.00, '2021-04-01', '2021-04-30', 50, 'jwimpeneyh@delicious.com',  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
 call add_course_offerings('Computer Organization', 68.00, '2021-04-01', '2021-04-30', 80, 'zbugged@tinypic.com',  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
 call add_course_offerings('Science of Music', 38.00, '2021-04-01', '2021-04-30', 80, 'arobilliardi@tamu.edu',  '{"(2021-05-17, 14:00, 4)","(2021-05-19, 14:00, 4)","(2021-05-21, 14:00, 4)"}');
