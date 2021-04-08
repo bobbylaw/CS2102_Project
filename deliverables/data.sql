@@ -1,4 +1,5 @@
 -- Employee Administrator (10 rows)
+-- SYNTAX: add_employee(name TEXT, home_address TEXT, contact_number TEXT, email_address TEXT, salary_information SALARY_INFORMATION, join_date DATE, catagory TEXT, course_areas TEXT[] DEFAULT NULL)
 call add_employee ('Bevan Douglass', '8875 Dawn Street', '(844) 9752140', 'bdouglassj@wired.com', (2200, 'monthly'), '2020-06-10', 'administrator');
 call add_employee ('Jessalin Wimpeney', '50 Westridge Place', '(535) 5671239', 'jwimpeneyh@delicious.com', (2300, 'monthly'), '2020-06-16', 'administrator');
 call add_employee ('Zola Bugge', '27 Green Ridge Avenue', '(557) 6403274', 'zbugged@tinypic.com', (2500, 'monthly'), '2020-07-04', 'administrator');
@@ -41,6 +42,7 @@ call add_employee ('Elvira Pinckney', '3550 Pepper Wood Crossing', '(209) 576504
 call add_employee ('Cello Gregorowicz', '3945 Talmadge Park', '(122) 3027611', 'cgregorowiczu@npr.org', (18, 'hourly'), '2020-12-31', 'instructor', '{Law, Business}');
 
 -- Courses (assuming time is in hours)
+-- SYNTAX: add_course(IN course_title TEXT, IN course_description TEXT, IN course_area TEXT, IN course_duration INTERVAL)
 call add_course ('Programming Methodology', 'This course introduces the concepts of programming and computational problem solving, and is the first and foremost introductory course to computing.', 'Computer Science',  INTERVAL '2 hour');
 call add_course ('Legal Environment of Business', 'This course will equip business students with basic legal knowledge relating to commercial transactions so that they will be more aware of potential legal problems', 'Business', INTERVAL '4 hour');
 call add_course ('Computer Organization', 'This course teaches students computer organization concepts and how to write efficient microprocessor programs using assembly language.', 'Computer Engineering', INTERVAL '3 hour');
@@ -66,6 +68,7 @@ INSERT INTO Rooms VALUES (9, 'Floor 2 Room 4', 30);
 INSERT INTO Rooms VALUES (10, 'Floor 2 Room 5', 30);
 
 -- Course Offerings (There is 11 courses, 10 courses is offered, registration is almost a month before it start)
+-- SYNTAX: add_course_offerings (IN course_title TEXT, IN course_fees NUMERIC(12,2), IN launch_date DATE, IN registration_deadline DATE, IN target_number_of_registration INTEGER, IN administrator_email TEXT, IN session_info SESSION_INFORMATION[])
 call add_course_offerings('Programming Methodology', 68.00, '2021-04-01', '2021-04-30', 70, 'bdouglassj@wired.com',  '{"(2021-05-10, 9:00, 1)","(2021-05-12, 9:00, 1)","(2021-05-14, 9:00, 1)"}'); 
 call add_course_offerings('Legal Environment of Business', 98.00, '2021-04-01', '2021-04-30', 50, 2,  '{"(2021-05-10, 14:00, 2)","(2021-05-12, 14:00, 2)","(2021-05-14, 14:00, 2)"}');
 call add_course_offerings('Computer Organization', 68.00, '2021-04-01', '2021-04-30', 80, 3,  '{"(2021-05-10, 9:00, 3)","(2021-05-12, 9:00, 3)","(2021-05-14, 9:00, 3)"}');
@@ -77,8 +80,8 @@ call add_course_offerings('General Biology', 108.00, '2020-12-01', '2020-12-27',
 call add_course_offerings('Modern Technology in Medicine and Health', 88.00, '2020-12-01', '2020-12-27', 70, 9,  '{"(2021-01-19, 9:00, 1)","(2021-01-20, 9:00, 1)","(2021-01-21, 9:00, 1)"}');
 call add_course_offerings('Chemical Engineering Principles', 78.00, '2020-12-01', '2020-12-31', 80, 10,  '{"(2021-01-19, 14:00, 1)","(2021-01-20, 14:00, 1)","(2021-01-21, 14:00, 1)"}');
 
-
 -- Customers
+-- SYNTAX: add_customer(IN input_cust_name TEXT, IN input_address TEXT, IN input_phone TEXT, IN input_email TEXT, IN input_card_number TEXT, IN input_expiry_date DATE, IN input_CVV INTEGER)
 CALL add_customer('Suzy Standrin', '61 Oriole Crossing', '(513) 9443136', 'sstandrin0@i2i.jp', '4041374696425943', '2023-01-15', 911);
 CALL add_customer('Farrand Agastina', '644 Independence Plaza', '(754) 2932401', 'fagastina1@guardian.co.uk', '4017950493001035', '2022-12-03', 911);
 CALL add_customer('Martynne Dabbs', '9 Moose Crossing', '(408) 3827563', 'mdabbs2@wp.com', '4041374159205451', '2023-03-23', 234);
