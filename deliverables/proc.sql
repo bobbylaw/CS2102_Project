@@ -608,7 +608,8 @@ The inputs to the routine include the customer and course package identifiers.
 If the purchase transaction is valid, the routine will process the purchase with the necessary updates (e.g., payment).
 */
 --I use email as customer identifier since it is unique and not null.
-CREATE OR REPLACE PROCEDURE buy_course_package(IN input_customer_email TEXT, IN input_package_id INTEGER)
+--I use package name as package identifier since it is unique and not null.
+CREATE OR REPLACE PROCEDURE buy_course_package(IN input_customer_email TEXT, IN input_package_name TEXT)
 AS $$
 DECLARE
     customer_id INTEGER;
@@ -618,7 +619,13 @@ DECLARE
     start_date DATE;
     end_date DATE;
     now_date DATE;
+    input_package_id INTEGER;
 BEGIN
+    input_package_id := (SELECT package_id
+                         FROM Course_packages
+                         WHERE name = input_package_name
+                         LIMIT 1); --find package id using package name
+											  
     customer_id := (SELECT cust_id
                     FROM Customers
                     WHERE email = input_customer_email
