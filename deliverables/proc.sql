@@ -1368,7 +1368,7 @@ For a full-time employees, the values for number of work hours for the month and
 CREATE OR REPLACE FUNCTION pay_salary()
 RETURNS TABLE(employee_id INTEGER, employee_name TEXT, status TEXT, num_work_days INTEGER, num_work_hours INTEGER, hourly_rate INTEGER, monthly_salary INTEGER, salary_amount_paid NUMERIC(5,2)) AS $$
 DECLARE
-	curs CURSOR FOR (SELECT * FROM employees natural join full_time_emp where depart_date ISNULL) union (SELECT * FROM employees natural join part_time_emp where depart_date ISNULL);
+	curs CURSOR FOR (SELECT * FROM employees natural join full_time_emp) union (SELECT * FROM employees natural join part_time_emp);
 	start_of_month DATE;
 	end_of_month DATE;
 	days_in_month INTEGER;
@@ -1383,6 +1383,13 @@ BEGIN
 	LOOP
 		FETCH curs INTO r;
 		EXIT WHEN NOT FOUND;
+		IF r.depart_date NOTNULL and (r.depart_date NOT BETWEEN start_of_month AND end_of_month) THEN
+			CONTINUE;
+		END IF;
+		--reset start and end of month for each employee
+		start_of_month := (SELECT DATE_TRUNC('MONTH', CURRENT_DATE));
+		end_of_month := (SELECT DATE_TRUNC('MONTH', CURRENT_DATE) + interval '1 month - 1 day');
+		
 		employee_id := r.eid;
 		employee_name := r.name;
 		IF (r.monthly_salary).rate = 'monthly' THEN
@@ -1392,7 +1399,8 @@ BEGIN
 			monthly_salary := (r.monthly_salary).salary;
 			IF r.join_date BETWEEN start_of_month AND end_of_month THEN
 				start_of_month := r.join_date;
-			ELSIF r.depart_date BETWEEN start_of_month AND end_of_month THEN
+			END IF;
+			IF r.depart_date BETWEEN start_of_month AND end_of_month THEN
 				end_of_month := r.depart_date;
 			END IF;
 			work_days := (SELECT count(*) FROM generate_series(start_of_month, end_of_month, interval  '1 day') the_day WHERE  extract('ISODOW' FROM the_day) < 6);
@@ -1795,7 +1803,7 @@ There must be one output record for each manager in the company and the output i
 CREATE OR REPLACE FUNCTION view_manager_report()
 RETURNS TABLE(manager_name TEXT, total_num_of_course_areas_managed INTEGER, total_number_of_course_offerings_ended_this_year INTEGER, total_net_reg_fees NUMERIC(12,2), highest_total_course_offerings TEXT[]) AS $$
 DECLARE
-	curs1 CURSOR FOR (SELECT eid, name FROM Employees natural join Managers ORDER BY name);
+	curs1 CURSOR FOR (SELECT * FROM Employees natural join Managers ORDER BY name);
 	r1 RECORD;
 	
 	curs2 refcursor;
@@ -1817,6 +1825,9 @@ BEGIN
 	LOOP
 		FETCH curs1 into r1;
 		EXIT WHEN NOT FOUND;
+		IF r1.depart_date NOTNULL and (SELECT EXTRACT('YEAR' FROM r1.depart_date)) != current_year THEN
+			CONTINUE;
+		END IF;
 		manager_name := r1.name;
 		total_num_of_course_areas_managed := (SELECT count(*) FROM course_areas C where C.eid = r1.eid);
 		total_number_of_course_offerings_ended_this_year := (SELECT count(*) FROM (course_areas natural join Courses) AS C join Offerings O on C.course_id = O.course_id where C.eid = r1.eid and EXTRACT('YEAR'FROM end_date) = current_year);

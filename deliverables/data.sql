@@ -28,7 +28,7 @@ call add_employee ('Garner Alfonso', '6 Morrow Circle', '(637) 4068164', 'galfon
 call add_employee ('Maddie Torbett', '92842 Dennis Place', '(699) 6491511', 'mtorbett1@utexas.edu', (2200,'monthly'), '2020-12-24', 'manager', '{Design and Environment}');
 call add_employee ('Omero Churchyard', '42636 Nobel Hill', '(240) 7094122', 'ochurchyard6@howstuffworks.com', (2200,'monthly'), '2020-12-25', 'manager', '{Music}');
 call add_employee ('Lebbie Goulter', '5634 Upham Center', '(967) 3520624', 'lgoulter9@parallels.com', (1900,'monthly'), '2020-12-27', 'manager', '{Law}');
-call add_employee ('Shelagh Glenwright', '83925 Ludington Center', '(630) 4688864', 'sglenwright7@ning.com', (1800,'monthly'), '2020-03-29', 'manager', null);
+call add_employee ('Shelagh Glenwright', '83925 Ludington Center', '(630) 4688864', 'sglenwright7@ning.com', (1800,'monthly'), '2021-04-02', 'manager', null);
 
 -- Employee Full-time-Instructor (10 rows)
 call add_employee ('Carlin Binding', '40 Butternut Way', '(564) 2063343', 'cbindingw@marriott.com', (2000, 'monthly'), '2020-06-25', 'instructor', '{Computer Science}');
@@ -57,7 +57,7 @@ call add_employee ('Bree Wolfinger', '86 Red Cloud Park', '(878) 2967928', 'bwol
 
 
 -- Simulate employee left company
-call remove_employee('sglenwright7@ning.com', '2021-03-15');
+call remove_employee('sglenwright7@ning.com', '2021-04-08');
 
 -- Courses (assuming time is in hours)
 -- SYNTAX: add_course(IN course_title TEXT, IN course_description TEXT, IN course_area TEXT, IN course_duration INTERVAL)
@@ -211,3 +211,7 @@ call register_sessions('msooper6@smugmug.com', 'Programming Methodology', '2021-
 call cancel_registration('msooper6@smugmug.com', 'Programming Methodology', '2021-04-05'); -- cancel the course offering which just redeem
 call register_sessions('msooper6@smugmug.com', 'Programming Methodology', '2021-04-05', 1, 'credit card'); -- add back register.
 -- Both refund_amt and package_credit is credited under same record.
+
+
+--pay salary
+select pay_salary()
