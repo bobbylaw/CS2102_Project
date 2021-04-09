@@ -2495,8 +2495,11 @@ BEGIN
                 CLOSE CURS;
                 RETURN NEW;
             END IF;
+        END IF;
 
-        ELSE
+        is_found := 0;
+        
+        IF NEW.refund_amt > 0 THEN
             SELECT COUNT(*) INTO is_found FROM Registers
             WHERE Registers.course_id = NEW.course_id
             AND Registers.launch_date = NEW.launch_date
