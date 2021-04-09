@@ -691,10 +691,11 @@ The redeemed session information is sorted in ascending order of session date an
 /*Explanation and implementation:
 1. I have to find all the information (except the information about redeemed sessions) needed to form the jsonb.
     Implementation: I used the first SELECT to find corresponding information for the input customer. 
-2. I have to get the information about redeemed sessions and combine all the information to form the jsonb. 
-   Implementation: I used the jsonb_build_object() function to combine all the information together.
-        Meanwhile, inside of it, I use SELECT to find the information about redeemed sessions.
-3. Iuse email as customer identifier since it is unique and not null.
+2. I used a CTE to find and sort all the information of the customer's redeemed sessions.
+3. I have to combine all the information needed of the customer to form the jsonb. 
+   Implementation: I used the json_agg() to combine the information of redeemeded sessiosn to a json,
+   and then use jsonb_build_object() function to combine all the information together.
+4. Iuse email as customer identifier since it is unique and not null.
 */
 CREATE OR REPLACE FUNCTION get_my_course_packages(IN input_email TEXT) 
 RETURNS TABLE (json_obj jsonb) 
@@ -711,33 +712,38 @@ DECLARE
     course_name TEXT;
     customer_id INTEGER;
     pid INTEGER;
+    info JSON;
 BEGIN
     SELECT cust_id INTO customer_id
     FROM CustomerS
-    WHERE email = input_email; -- the email is used to find customer id
+    WHERE email = input_email
+    LIMIT 1; -- the email is used to find customer id
 	
     SELECT name, num_free_registrations, num_of_redemption, Buys.purchase_date, Course_packages.price, package_id 
     INTO package_name, num_free_sessions, num_unredeem_sessions, date_of_purchase, price, pid     
     FROM Owns_credit_cards  NATURAL JOIN BUYS NATURAL JOIN Course_packages
     WHERE Owns_credit_cards.cust_id = customer_id
-    AND num_of_redemption > 0 
-    OR (num_of_redemption = 0 AND EXISTS (
+    AND (num_of_redemption > 0 
+    	OR (num_of_redemption = 0 AND EXISTS (
                                     SELECT 1 
 				    FROM Owns_credit_cards NATURAL JOIN Redeems NATURAL JOIN Sessions  
                                     WHERE Owns_credit_cards.cust_id = customer_id
-                                    AND Sessions.session_date - CAST(NOW() AS DATE) >= 7));
-RETURN query(
-    select jsonb_build_object(
-	'package name', package_name, 'number of free sessions', num_free_sessions, 'number of sessions left', num_unredeem_sessions, 
-        'info of redeemed sessions' , 
-           (SELECT COALESCE(jsonb_agg(jsonb_build_object('course name', C.name, 'session date', S.session_date, 'start time', S.start_time)) , '[]')
-	    FROM Redeems AS R NATURAL JOIN Courses AS C NATURAL JOIN Sessions AS S NATURAL JOIN Owns_credit_cards AS O
+                                    AND Sessions.session_date - CAST(NOW() AS DATE) >= 7)));
+	
+	WITH redeem_info AS (
+	    SELECT C.name, S.session_date, S.start_time
+	    FROM Owns_credit_cards AS O NATURAL JOIN Redeems AS R NATURAL JOIN Courses AS C NATURAL JOIN Sessions AS S
             WHERE O.cust_id = customer_id 
             AND R.package_id = pid
             AND R.purchase_date = date_of_purchase
-            AND C.course_id = R.course_id
-            GROUP BY S.session_date, S.start_time
-            ORDER BY S.session_date, S.start_time ASC)
+            ORDER BY S.session_date, S.start_time
+        )
+	SELECT COALESCE(json_agg(jsonb_build_object('course name', redeem_info.name, 'session date', redeem_info.session_date, 'start time', redeem_info.start_time)) , '[]') 
+	into info FROM redeem_info;
+RETURN query(
+    select jsonb_build_object(
+	    'package name', package_name, 'number of free sessions', num_free_sessions, 'number of sessions left', num_unredeem_sessions,
+        'info of redeemed sessions', info
 	) AS json_obj);
 	
 END;
@@ -1537,6 +1543,7 @@ BEGIN
 		SELECT num_sales FROM
         (SELECT DISTINCT num_sales 
         FROM pkg_info
+	ORDER BY num_sales DESC
         LIMIT input_n
         ) AS New_sales
 		WHERE num_sales = New_sales.num_sales
