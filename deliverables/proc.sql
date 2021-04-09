@@ -1022,6 +1022,8 @@ Things to note:
 - A customer can ONLY have 1 register/redeem for each COURSE OFFERING.
 - A customer can owns multiple credit card. Hence we iterate through the credit cards and check which credit card
     the customer use to register/redeem the course session. 
+- We decided the customer cancel 7 days after the registration, their record in register/redeem will be deleted 
+    but the cancel table will not have record of it because there is no refund made to the customer.
 */
 CREATE OR REPLACE PROCEDURE cancel_registration(IN customer_email TEXT, IN course_title TEXT, IN offering_launch_date DATE)
 AS $$
@@ -1057,31 +1059,38 @@ BEGIN
         FROM Redeems
         WHERE Redeems.course_id = course_identifier 
         AND Redeems.launch_date = offering_launch_date 
-        AND Redeems.card_number = r.card_number
-        AND CURRENT_DATE - Redeems.purchase_date <= 7;
+        AND Redeems.card_number = r.card_number;
 
         SELECT COUNT(*) INTO is_register
         FROM Registers
         WHERE Registers.course_id = course_identifier
         AND Registers.launch_date = offering_launch_date
-        AND Registers.card_number = r.card_number
-        AND CURRENT_DATE - Registers.registration_date <= 7;
+        AND Registers.card_number = r.card_number;
 
         IF (is_redeem > 0) THEN
-            SELECT sid INTO session_id FROM Redeems
+            SELECT coalesce(sid, 0) INTO session_id FROM Redeems
             WHERE Redeems.course_id = course_identifier 
             AND Redeems.launch_date = offering_launch_date 
             AND Redeems.card_number = r.card_number
             AND CURRENT_DATE - Redeems.purchase_date <= 7
             LIMIT 1;
+            
+            IF session_id <> 0 THEN
+                INSERT INTO Cancels
+                VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1);
+            ELSE
+                INSERT INTO Cancels
+                VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 0);
 
-            INSERT INTO Cancels
-            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 1);
-			CLOSE curs1;
-			RETURN;
-
+                DELETE FROM Redeems -- delete the entry in redeems
+                WHERE Redeems.course_id = course_identifier 
+                AND Redeems.launch_date = offering_launch_date 
+                AND Redeems.card_number = r.card_number;
+            END IF;
+            CLOSE curs1;
+            RETURN;
         ELSIF (is_register > 0) THEN
-            SELECT sid INTO session_id
+            SELECT coalesce(sid, 0) INTO session_id
             FROM Registers
             WHERE Registers.course_id = course_identifier
             AND Registers.launch_date = offering_launch_date
@@ -1089,8 +1098,19 @@ BEGIN
             AND CURRENT_DATE - Registers.registration_date <= 7
             LIMIT 1;
 
-            INSERT INTO Cancels
-            VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
+            IF session_id <> 0 THEN
+                INSERT INTO Cancels
+                VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0.9 * course_offering_price, 0);
+            ELSE
+                INSERT INTO Cancels
+                VALUES (customer_id, course_identifier, offering_launch_date, session_id, CURRENT_DATE, 0, 0);
+
+                DELETE FROM Registers -- delete the row in registers
+                WHERE Registers.course_id = course_identifier
+                AND Registers.launch_date = offering_launch_date
+                AND Registers.card_number = r.card_number;
+
+            END IF;
 			CLOSE curs1;
 			RETURN;
         END IF;
@@ -1121,7 +1141,17 @@ DECLARE
     course_duration INTERVAL;
     is_invalid_update INTEGER;
     course_identifier INTEGER;
+    cse_area TEXT;
+    instructor_specialization TEXT;
 BEGIN
+    SELECT name INTO cse_area FROM courses WHERE course_title = Courses.title;
+    SELECT course_area INTO instructor_specialization FROM Instructors WHERE Instructors.eid = new_eid;
+
+    IF cse_area <> instructor_specialization THEN
+        RAISE EXCEPTION 'The instructor is not capable of teaching this course session';
+    END IF;
+
+
     SELECT course_id INTO course_identifier FROM Courses WHERE Courses.title = course_title;
     is_invalid_update := 0;
 
