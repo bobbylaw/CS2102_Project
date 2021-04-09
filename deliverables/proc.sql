@@ -2520,7 +2520,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER refund_session
-BEFORE INSERT
+BEFORE INSERT OR UPDATE
 ON Cancels
 FOR EACH ROW
 EXECUTE FUNCTION refund_session_func();
